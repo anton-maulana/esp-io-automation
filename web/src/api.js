@@ -31,8 +31,7 @@ export function fetchConfig() {
     .then((response) => {
       if (response.status === 401 || response.status === 403) {
         clearSession();
-        window.location.reload();
-        return new Promise(() => {});
+        throw Error("session_expired");
       }
       if (!response.ok) throw Error("config_load_failed");
       return response.json();
@@ -76,12 +75,32 @@ export function uploadFirmware(file) {
   });
 }
 
+let clockEpochMs = 0;
+let clockUpdatedAtMs = 0;
+let clockSource = "";
+
+function renderClock() {
+  if (clockEpochMs < 946684800000) {
+    el("clock-status").textContent = "Waktu belum tersinkron";
+    return;
+  }
+  const current = new Date(clockEpochMs + Date.now() - clockUpdatedAtMs);
+  el("clock-status").textContent = `Waktu ${clockSource.toUpperCase()}: ${current.toLocaleString("id-ID")}`;
+}
+
+if (typeof setInterval === "function") setInterval(renderClock, 1000);
+
 export function loadTime() {
   return fetch("/api/time")
-    .then((response) => response.json())
+    .then((response) => {
+      if (!response.ok) throw Error("time_load_failed");
+      return response.json();
+    })
     .then((time) => {
-      el("clock-status").textContent =
-        `Waktu ${(time.source || "tidak diketahui").toUpperCase()}: ${String(time.iso || "belum tersedia").trim()}`;
+      clockEpochMs = Number(time.epoch) * 1000;
+      clockUpdatedAtMs = Date.now();
+      clockSource = time.source || "tidak diketahui";
+      renderClock();
     })
     .catch(() => {
       el("clock-status").textContent = "Waktu tidak tersedia";

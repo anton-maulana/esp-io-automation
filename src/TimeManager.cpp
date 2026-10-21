@@ -4,12 +4,17 @@
 
 uint8_t TimeManager::fromBcd(uint8_t value) { return (value >> 4) * 10 + (value & 0x0f); }
 
-void TimeManager::begin(JsonObjectConst config) {
+void TimeManager::begin(JsonObjectConst config, const String& timezone) {
+    _timezone = timezone;
     JsonObjectConst ds3231 = config["ds3231"].as<JsonObjectConst>();
     _ds3231Address = ds3231["address"] | 0x68;
     _ds3231Enabled = ds3231["enabled"] | true;
     _ntpConfigured = config["ntpEnabled"] | true;
-    if (_ntpConfigured) configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+    long utcOffset = 0;
+    if (_timezone == "Asia/Jakarta") utcOffset = 7 * 3600;
+    else if (_timezone == "Asia/Makassar") utcOffset = 8 * 3600;
+    else if (_timezone == "Asia/Jayapura") utcOffset = 9 * 3600;
+    if (_ntpConfigured) configTime(utcOffset, 0, "pool.ntp.org", "time.nist.gov");
     _lastCheckMs = 0;
 }
 
@@ -41,16 +46,22 @@ void TimeManager::tick() {
     _lastCheckMs = now;
     tm value;
     _ds3231Available = readDs3231(value);
-    if (_ds3231Available) writeSystemTime(value);
+    if (_ds3231Available) {
+        writeSystemTime(value);
+        return;
+    }
+    if (_ntpConfigured) _ntpAvailable = time(nullptr) >= 946684800;
 }
 
 void TimeManager::fillStatus(JsonObject doc) const {
     time_t current = time(nullptr);
-    doc["source"] = _ds3231Available ? "ds3231" : (_ntpConfigured ? "ntp" : "millis");
+    bool ntpAvailable = _ntpAvailable || (_ntpConfigured && current >= 946684800);
+    doc["source"] = _ds3231Available ? "ds3231" : (ntpAvailable ? "ntp" : "unsynced");
     doc["ds3231Enabled"] = _ds3231Enabled;
     doc["ds3231Available"] = _ds3231Available;
     doc["ds3231Address"] = _ds3231Address;
     doc["ntpEnabled"] = _ntpConfigured;
+    doc["ntpAvailable"] = _ntpAvailable;
     doc["epoch"] = (uint32_t)current;
     doc["iso"] = String(ctime(&current));
 }

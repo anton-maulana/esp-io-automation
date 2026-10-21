@@ -4,7 +4,7 @@
 
 class TimeManager {
 public:
-    void begin(JsonObjectConst config);
+    void begin(JsonObjectConst config, const String& timezone);
     void tick();
     void fillStatus(JsonObject doc) const;
 
@@ -12,6 +12,8 @@ private:
     bool _ds3231Enabled = false;
     bool _ds3231Available = false;
     bool _ntpConfigured = false;
+    bool _ntpAvailable = false;
+    String _timezone = "UTC";
     uint8_t _ds3231Address = 0x68;
     uint32_t _lastCheckMs = 0;
 

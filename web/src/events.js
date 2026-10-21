@@ -8,7 +8,12 @@ export function bindNavigation() {
     el("login-modal").classList.remove("hidden");
   el("close-login").onclick = () => el("login-modal").classList.add("hidden");
   el("menu-button").onclick = () => el("admin-drawer").classList.add("open");
-  el("close-menu").onclick = () => el("admin-drawer").classList.remove("open");
+  const closeMenu = document.getElementById("close-menu");
+  if (closeMenu && typeof closeMenu.addEventListener === "function") {
+    closeMenu.addEventListener("click", () =>
+      el("admin-drawer").classList.remove("open"),
+    );
+  }
   document.querySelectorAll("[data-view]").forEach(
     (button) =>
       (button.onclick = () => {

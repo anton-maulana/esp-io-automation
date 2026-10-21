@@ -72,11 +72,11 @@ void setup() {
     Serial.printf("[RELAY] Configured %u relays\n", relays.count());
 
     Serial.println("[BOOT] Step 7/10: configuring automation");
-    automation.configure(root["automations"].as<JsonArrayConst>(), pins, relays);
+    automation.configure(root["automations"].as<JsonArrayConst>(), pins, relays, pcf, gpioMgr);
     Serial.printf("[AUTOMATION] Configured %u rules\n", automation.count());
 
     Serial.println("[BOOT] Step 8/10: starting clock");
-    timeManager.begin(root["time"].as<JsonObjectConst>());
+    timeManager.begin(root["time"].as<JsonObjectConst>(), root["device"]["timezone"] | "UTC");
 
     Serial.println("[BOOT] Step 9/10: starting Wi-Fi");
     network.begin(root["network"]["wifi"]["ssid"] | "", root["network"]["wifi"]["password"] | "", root["network"]["wifi"]["hostname"] | "modu-switch", root["network"]["wifi"]["reconnectIntervalMs"] | 5000UL);
@@ -95,6 +95,8 @@ void loop() {
     network.tick();
     pins.tick(pcf, gpioMgr, onPinEdge);
     automation.tick();
+    uint8_t changedRelay;
+    while (automation.consumeRelayChange(changedRelay)) api.publishRelayState(changedRelay);
     http.tick();
     api.tick();
 }

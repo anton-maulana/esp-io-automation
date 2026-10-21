@@ -66,7 +66,6 @@ void ApiServer::begin(ConfigManager &config, ConfigValidator &validator, RelayMa
         response["rebootRequired"] = _lastRebootRequired;
         sendJson(request, response); }));
 
-    
     _server.on("/api/ota", HTTP_POST, [this](AsyncWebServerRequest *request)
                {
         if (!isAuthenticated(request)) { request->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
@@ -374,7 +373,7 @@ void ApiServer::reloadRuntime()
         }
         if (!restored) _relays->setState(i, relay.startupPolicy == "on", *_pins, *_pcf, *_gpio);
     }
-    if (_automation) _automation->configure(doc["automations"].as<JsonArrayConst>(), *_pins, *_relays);
+    if (_automation) _automation->configure(doc["automations"].as<JsonArrayConst>(), *_pins, *_relays, *_pcf, *_gpio);
 }
 
 void ApiServer::restoreRedacted(JsonDocument &candidate) const

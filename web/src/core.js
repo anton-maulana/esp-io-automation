@@ -5,11 +5,18 @@ export const state = {
   ws: null,
   admin: false,
   board: "esp8266_d1_mini",
-  token:
-    document.cookie
-      .split("; ")
-      .find((item) => item.indexOf("modu_session=") === 0)
-      ?.split("=")[1] || "",
+  token: (() => {
+    const cookie = document.cookie
+      .split(";")
+      .map((item) => item.trim())
+      .find((item) => item.indexOf("modu_session=") === 0);
+    if (!cookie) return "";
+    try {
+      return decodeURIComponent(cookie.slice("modu_session=".length));
+    } catch {
+      return "";
+    }
+  })(),
   config: null,
 };
 
@@ -29,13 +36,15 @@ export function escapeHtml(value) {
   );
 }
 
-export function setSession(token) {
+export function setSession(token, expiresInMs = 3600000) {
   state.token = token;
-  document.cookie = `modu_session=${encodeURIComponent(token)}; Max-Age=3600; Path=/; SameSite=Strict`;
+  const maxAge = Math.max(1, Math.floor(expiresInMs / 1000));
+  document.cookie = `modu_session=${encodeURIComponent(token)}; Max-Age=${maxAge}; Path=/; SameSite=Strict`;
 }
 
 export function clearSession() {
   state.token = "";
+  state.admin = false;
   document.cookie = "modu_session=; Max-Age=0; Path=/; SameSite=Strict";
 }
 
@@ -62,5 +71,4 @@ export function showView(view) {
     .querySelectorAll(".view")
     .forEach((item) => item.classList.add("hidden"));
   el(`${view}-view`).classList.remove("hidden");
-  el("admin-drawer").classList.remove("open");
 }

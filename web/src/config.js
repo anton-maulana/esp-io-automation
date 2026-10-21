@@ -239,7 +239,9 @@ function refreshConfig() {
 
 export function syncLoginUI() {
   if (!state.token) {
+    state.admin = false;
     el("menu-button").classList.add("hidden");
+    el("admin-drawer").classList.remove("open");
     el("login-button").classList.remove("hidden");
     return;
   }
@@ -247,10 +249,20 @@ export function syncLoginUI() {
   el("login-modal").classList.add("hidden");
   el("login-error").textContent = "";
   el("menu-button").classList.remove("hidden");
+  el("admin-drawer").classList.add("open");
   el("login-button").classList.add("hidden");
-  loadConfig().catch(() => {
-    el("login-error").textContent =
-      "Login berhasil, tetapi konfigurasi gagal dimuat.";
+  loadConfig().catch((error) => {
+    if (error.message === "session_expired") {
+      clearSession();
+      el("menu-button").classList.add("hidden");
+      el("admin-drawer").classList.remove("open");
+      el("login-button").classList.remove("hidden");
+      return;
+    }
+    if (state.token) {
+      el("login-error").textContent =
+        "Login berhasil, tetapi konfigurasi gagal dimuat.";
+    }
   });
 }
 
@@ -260,7 +272,7 @@ export function bindConfigEvents() {
     const form = new FormData(event.target);
     login(form.get("username"), form.get("password"))
       .then((data) => {
-        setSession(data.token);
+        setSession(data.token, data.expiresInMs);
         syncLoginUI();
       })
       .catch(() => {
