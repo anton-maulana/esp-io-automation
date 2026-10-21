@@ -46,6 +46,10 @@ bool ConfigValidator::checkRelayRefs(const JsonDocument& doc, String& error) {
             if (String(pin["id"] | "") == String(relay["pinId"] | "")) { found = true; if (String(pin["mode"] | "") != "output") { error = "Relay must use an output pin"; return false; } }
         }
         if (!found) { error = "Relay references an unknown pin"; return false; }
+        if (relay["activeLevel"].is<int>()) {
+            int activeLevel = relay["activeLevel"] | 1;
+            if (activeLevel != 0 && activeLevel != 1) { error = "Relay activeLevel must be 0 or 1"; return false; }
+        }
     }
     return true;
 }

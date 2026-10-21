@@ -64,10 +64,12 @@ export function addIo(initial = {}) {
   const name = escapeHtml(initial.name || "");
   const level = initial.level ? "high" : "low";
   const mode = initial.mode === "input" ? "input" : "output";
+  const activeLevel = initial.activeLevel === 0 ? "low" : "high";
   row.innerHTML =
     `<input name="pin" type="number" min="0" max="7" placeholder="Pin 0-7" required value="${pin}">` +
     `<select name="mode"><option value="output"${mode === "output" ? " selected" : ""}>Output</option><option value="input"${mode === "input" ? " selected" : ""}>Input</option></select>` +
     `<input name="name" placeholder="Nama I/O" required value="${name}">` +
+    `<select name="activeLevel"><option value="high"${activeLevel === "high" ? " selected" : ""}>Active High (ON = HIGH)</option><option value="low"${activeLevel === "low" ? " selected" : ""}>Active Low (ON = LOW)</option></select>` +
     `<select name="default"><option value="low"${level === "low" ? " selected" : ""}>Low</option><option value="high"${level === "high" ? " selected" : ""}>High</option></select>` +
     `<button type="button" class="plain remove-io">×</button>`;
   row.querySelector(".remove-io").onclick = () => row.remove();
@@ -96,6 +98,11 @@ export function renderConfigLists() {
         form.gpio.value = pin.gpio;
         form.mode.value = pin.mode;
         form.name.value = pin.name;
+        form.activeLevel.value =
+          (state.config.relays || []).find((relay) => relay.pinId === pin.id)
+            ?.activeLevel === 0
+            ? "low"
+            : "high";
         form.defaultCondition.value = pin.initialState ? "high" : "low";
       };
       item.querySelector(".delete").onclick = () => {
@@ -136,6 +143,9 @@ export function renderConfigLists() {
             mode: pin.mode,
             name: pin.name,
             level: pin.initialState ? 1 : 0,
+            activeLevel:
+              (config.relays || []).find((relay) => relay.pinId === pin.id)
+                ?.activeLevel ?? 1,
           }),
         );
       if (!ioList.children.length) addIo();
@@ -311,6 +321,7 @@ function saveGpio(event) {
   const mode = form.get("mode");
   const name = form.get("name");
   const level = form.get("defaultCondition") === "high" ? 1 : 0;
+  const activeLevel = form.get("activeLevel") === "low" ? 0 : 1;
   const allowed = [...el("gpio-pin-select").options].some(
     (option) => Number(option.value) === gpio,
   );
@@ -336,18 +347,21 @@ function saveGpio(event) {
         pin.safeState = level;
         pin.debounceMs = mode === "input" ? 50 : 0;
         if (mode === "output") {
-          if (!draft.relays.some((relay) => relay.pinId === pin.id)) {
+          const relay = draft.relays.find((entry) => entry.pinId === pin.id);
+          if (relay) {
+            relay.activeLevel = activeLevel;
+          } else {
             draft.relays.push({
               id: `relay-${pin.id}`,
               name,
               room: "GPIO Switch",
               icon: "bulb",
               pinId: pin.id,
-              activeLevel: 1,
-              enabled: true,
-              publicControl: true,
-              startupPolicy: "off",
-            });
+               activeLevel,
+               enabled: true,
+               publicControl: true,
+               startupPolicy: "off",
+             });
           }
         } else {
           draft.relays = draft.relays.filter((relay) => relay.pinId !== pin.id);
@@ -372,7 +386,7 @@ function saveGpio(event) {
             room: "GPIO Switch",
             icon: "bulb",
             pinId: id,
-            activeLevel: 1,
+            activeLevel,
             enabled: true,
             publicControl: true,
             startupPolicy: "off",
@@ -409,6 +423,7 @@ function saveExtend(event) {
     mode: row.querySelector('[name="mode"]').value,
     name: row.querySelector('[name="name"]').value,
     level: row.querySelector('[name="default"]').value === "high" ? 1 : 0,
+    activeLevel: row.querySelector('[name="activeLevel"]').value === "low" ? 0 : 1,
   }));
   return applyDraft(
     (draft) => {
@@ -455,9 +470,9 @@ function saveExtend(event) {
             name: row.name,
             room: name || "Extend Switch",
             icon: "bulb",
-            pinId,
-            activeLevel: 1,
-            enabled: true,
+             pinId,
+             activeLevel: row.activeLevel,
+             enabled: true,
             publicControl: true,
             startupPolicy: "off",
           });
