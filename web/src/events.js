@@ -1,7 +1,7 @@
 import { el, showForm, hideForm, showView } from "./core.js";
 import { loadConfig, logout, addIo } from "./config.js";
 import { loadDashboard } from "./dashboard.js";
-import { rebootDevice, uploadFirmware } from "./api.js";
+import { backupConfig, rebootDevice, restoreConfig, uploadFirmware } from "./api.js";
 
 export function bindNavigation() {
   el("login-button").onclick = () =>
@@ -45,7 +45,29 @@ export function bindNavigation() {
     loadDashboard();
   };
   el("scan-wifi").onclick = () =>
-    alert("Wi-Fi scan akan tersedia pada endpoint konfigurasi.");
+    alert("Wi-Fi scanning will be available through the configuration endpoint.");
+  el("backup-config").onclick = () => {
+    backupConfig()
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "moduswitch-config-backup.json";
+        link.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch((error) => alert(`Backup failed: ${error.message}`));
+  };
+  const restoreInput = el("restore-config-file");
+  el("restore-config").onclick = () => restoreInput.click();
+  restoreInput.onchange = () => {
+    const file = restoreInput.files[0];
+    if (!file || !confirm("Restore configuration from this file?")) return;
+    file.text()
+      .then((content) => restoreConfig(content))
+      .then(() => window.location.reload())
+      .catch((error) => alert(`Restore failed: ${error.message}`));
+  };
 
   const firmwareInput = el("firmware-file");
   el("upload-firmware").onclick = () => firmwareInput.click();
@@ -56,13 +78,13 @@ export function bindNavigation() {
       firmwareInput.value = "";
       return;
     }
-    el("device-status").textContent = "Mengunggah firmware...";
+    el("device-status").textContent = "Uploading firmware...";
     uploadFirmware(file)
       .then(() => {
-        el("device-status").textContent = "Firmware diunggah; reboot segera.";
+        el("device-status").textContent = "Firmware uploaded; rebooting soon.";
       })
       .catch((error) => {
-        el("device-status").textContent = `Gagal upload: ${error.message}`;
+        el("device-status").textContent = `Upload failed: ${error.message}`;
       })
       .finally(() => {
         firmwareInput.value = "";
@@ -70,14 +92,14 @@ export function bindNavigation() {
   };
 
   el("reboot-device").onclick = () => {
-    if (!confirm("Reboot perangkat sekarang?")) return;
-    el("device-status").textContent = "Me-reboot...";
+    if (!confirm("Reboot the device now?")) return;
+    el("device-status").textContent = "Rebooting...";
     rebootDevice()
       .then(() => {
-        el("device-status").textContent = "Reboot dimulai; menyambung ulang...";
+        el("device-status").textContent = "Reboot started; reconnecting...";
       })
       .catch((error) => {
-        el("device-status").textContent = `Gagal reboot: ${error.message}`;
+        el("device-status").textContent = `Reboot failed: ${error.message}`;
       });
   };
 }

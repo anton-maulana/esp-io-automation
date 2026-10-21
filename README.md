@@ -7,14 +7,15 @@ ModuSwitch is an Arduino/PlatformIO smart-switch firmware for Wemos D1 mini ESP8
 ## Features
 
 - Direct GPIO and PCF8574 relay/input control.
-- Local relay automation.
-- REST API and WebSocket relay state updates.
-- Admin login with session token.
-- Config validation, backup, atomic save, and safe cleanup of orphaned automations.
+- Local pin-change and scheduled relay automation.
+- REST API and WebSocket relay state updates, including scheduled actions.
+- Admin login with session token and authenticated admin-password updates.
+- Config validation, redacted backup download, validated restore, atomic save, and safe cleanup of orphaned automations.
 - Anonymous relay control can be enabled for public relays.
-- NTP and optional DS3231 time source reporting.
+- NTP fallback when DS3231 is unavailable, with device timezone support.
+- Active High and Active Low relay polarity per GPIO or PCF output.
 - OTA firmware upload endpoint and authenticated reboot endpoint.
-- Admin UI for dashboard, GPIO, expand switch, action, and device settings.
+- Admin UI for dashboard, GPIO, expand switch, action, device settings, password update, and backup/restore.
 
 ## Requirements
 
@@ -100,8 +101,10 @@ Configuration is stored as JSON and validated before it is applied.
 - `hardware.i2c`: SDA/SCL GPIO and clock speed.
 - `hardware.pcfs`: PCF8574 IDs and I2C addresses.
 - `pins`: the hardware abstraction. GPIO pins use `source: gpio`; PCF pins use `source: pcf`, `pcfId`, and `pin` 0–7.
-- `relays`: logical relays refer to hardware only through `pinId`.
-- `automations`: triggers and relay actions refer to logical `pinId` and relay IDs.
+- `relays`: logical relays refer to hardware only through `pinId`; `activeLevel` is `0` for Active Low or `1` for Active High, and `startupPolicy` controls the initial logical state.
+- `automations`: triggers and relay actions refer to logical `pinId` and relay IDs. Schedule triggers use the configured device timezone.
+
+The Device page provides admin password updates and Backup & Restore Config. Backups redact Wi-Fi passwords, server tokens, and the admin password hash. Restore validates the complete configuration and preserves current secrets for redacted values.
 
 Never commit `web/config.local.json`, generated `data/config.json`, Wi-Fi credentials, server tokens, or production secrets.
 
@@ -128,6 +131,9 @@ Useful endpoints:
 - `GET /api/config`
 - `PUT /api/config`
 - `POST /api/config/validate`
+- `GET /api/config/backup` — authenticated redacted backup download.
+- `POST /api/config/restore` — authenticated JSON restore with validation.
+- `POST /api/auth/password` — authenticated admin password update; verifies the current password.
 - `GET /api/time`
 - `POST /api/relay/toggle?id=RELAY_ID`
 - `POST /api/ota`

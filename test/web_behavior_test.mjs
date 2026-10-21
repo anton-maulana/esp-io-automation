@@ -187,9 +187,9 @@ await flush();
 
 assert.ok(putBody, "expected a config PUT");
 assert.equal(putBody.pins[0].id, "pin-gpio-12");
-assert.ok(alerts.some((message) => message.includes("GPIO tersimpan")));
+assert.ok(alerts.some((message) => message.includes("GPIO saved")));
 assert.ok(
-  !alerts.some((message) => message.includes("Gagal menyimpan GPIO")),
+  !alerts.some((message) => message.includes("Failed to save GPIO")),
   "successful save must not report failure",
 );
 
@@ -208,12 +208,12 @@ await flush();
 
 assert.ok(putBody, "save still succeeds when refresh fails");
 assert.ok(
-  !alerts.some((message) => message.includes("Gagal menyimpan GPIO")),
+  !alerts.some((message) => message.includes("Failed to save GPIO")),
   "refresh failure must not be reported as save failure",
 );
 assert.equal(
   document.getElementById("sync-status").textContent,
-  "Tersimpan; sinkronisasi gagal",
+  "Saved; synchronization failed",
 );
 
 getConfigOk = true;
@@ -231,7 +231,7 @@ await flush();
 
 assert.equal(putBody, null, "invalid config must not be saved");
 assert.ok(
-  alerts.some((message) => message.includes("Gagal menyimpan GPIO")),
+  alerts.some((message) => message.includes("Failed to save GPIO")),
   "validation failure must be reported",
 );
 

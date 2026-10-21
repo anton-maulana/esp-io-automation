@@ -13,6 +13,7 @@ ModuSwitch is PlatformIO firmware for ESP8266 Wemos D1 mini and ESP32-compatible
 - `tools/build_web.mjs`: generates `data/` from `web/` using Node.js and esbuild.
 - `test/`: device/API test scripts.
 - `upload.bat`, `upload.sh`: build web assets and upload firmware/filesystem.
+- `README.md`: project setup, features, API, and operational notes.
 
 ## Commands
 
@@ -38,6 +39,11 @@ Use `upload.bat firmware|fs|all` on Windows or `./upload.sh firmware|fs|all` on 
 - Never commit `web/config.local.json`, `data/config.json`, Wi-Fi credentials, tokens, passwords, or production identifiers.
 - Run `npm run build` before a filesystem upload; it copies `config.local.json` when present, otherwise uses the public example.
 - Validate configuration before applying it. Keep relay and automation references based on `pinId`, never duplicate physical pin addressing in relay or automation definitions.
+- Backup downloads must redact Wi-Fi passwords, server tokens, and admin password hashes. Restore must use backend validation and preserve current secrets when the backup contains redacted values.
+- Admin password updates must verify the current password and store only its SHA-1 hash.
+- Relay `activeLevel` is `0` for Active Low and `1` for Active High; generated relay `startupPolicy` must match the selected default condition.
+- Schedule automations use device timezone and must publish changed relay states through WebSocket.
+- Frontend dashboard/config loads should show loading state and handle expired sessions (`401`/`403`) with a login alert.
 
 ## Firmware conventions
 

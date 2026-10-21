@@ -32,7 +32,41 @@ void ApiServer::begin(ConfigManager &config, ConfigValidator &validator, RelayMa
         doc["expiresInMs"] = _config->doc()["access"]["sessionTimeoutMs"] | 3600000UL;
         String output;
         serializeJson(doc, output);
-        request->send(200, "application/json", output); });
+         request->send(200, "application/json", output); });
+    _server.addHandler(new AsyncCallbackJsonWebHandler("/api/auth/password", [this](AsyncWebServerRequest *request, JsonVariant &body)
+                                                       {
+        if (!isAuthenticated(request)) { request->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
+        String currentPassword = body["currentPassword"] | "";
+        String newPassword = body["newPassword"] | "";
+        if (currentPassword.length() == 0 || newPassword.length() < 8) { request->send(400, "application/json", "{\"error\":\"invalid_password\"}"); return; }
+        String currentHash = _config->doc()["access"]["adminPasswordHash"] | "";
+        if (sha1Hex(currentPassword) != currentHash) { request->send(403, "application/json", "{\"error\":\"invalid_current_password\"}"); return; }
+        JsonDocument candidate;
+        candidate.set(_config->doc());
+        candidate["access"]["adminPasswordHash"] = sha1Hex(newPassword);
+        String error;
+        if (!applyConfig(candidate, error)) { request->send(500, "application/json", (String("{\"error\":\"") + error + "\"}").c_str()); return; }
+        request->send(200, "application/json", "{\"updated\":true}");
+    }));
+    _server.on("/api/config/backup", HTTP_GET, [this](AsyncWebServerRequest *request)
+               {
+        if (!isAuthenticated(request)) { request->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
+        JsonDocument backup;
+        backup.set(_config->doc());
+        backup["network"]["wifi"]["password"] = "[redacted]";
+        backup["network"]["server"]["deviceToken"] = "[redacted]";
+        backup["access"]["adminPasswordHash"] = "[redacted]";
+        String output;
+        serializeJsonPretty(backup, output);
+        AsyncWebServerResponse *response = request->beginResponse(200, "application/json", output);
+        response->addHeader("Content-Disposition", "attachment; filename=moduswitch-config-backup.json");
+        request->send(response); });
+    _server.addHandler(new AsyncCallbackJsonWebHandler("/api/config/restore", [this](AsyncWebServerRequest *request, JsonVariant &body)
+                                                       {
+        if (!isAuthenticated(request)) { request->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
+        String error;
+        if (!applyConfig(body, error)) { request->send(400, "application/json", (String("{\"error\":\"") + error + "\"}").c_str()); return; }
+        request->send(200, "application/json", "{\"restored\":true}"); }));
     _server.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest *request)
                {
         if (!isAuthenticated(request)) { request->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }

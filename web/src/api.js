@@ -42,6 +42,39 @@ export function fetchConfig() {
     });
 }
 
+export function backupConfig() {
+  return fetch("/api/config/backup", { headers: authHeaders() }).then((response) => {
+    if (!response.ok) throw Error("backup_failed");
+    return response.blob();
+  });
+}
+
+export function restoreConfig(content) {
+  return fetch("/api/config/restore", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: content,
+  }).then((response) =>
+    response.json().then((data) => {
+      if (!response.ok) throw Error(data.error || "restore_failed");
+      return data;
+    }),
+  );
+}
+
+export function updatePassword(currentPassword, newPassword) {
+  return fetch("/api/auth/password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  }).then((response) =>
+    response.json().then((data) => {
+      if (!response.ok) throw Error(data.error || "password_update_failed");
+      return data;
+    }),
+  );
+}
+
 export function login(username, password) {
   return fetch("/api/auth/login", {
     method: "POST",
@@ -81,11 +114,11 @@ let clockSource = "";
 
 function renderClock() {
   if (clockEpochMs < 946684800000) {
-    el("clock-status").textContent = "Waktu belum tersinkron";
+    el("clock-status").textContent = "Time not synchronized";
     return;
   }
   const current = new Date(clockEpochMs + Date.now() - clockUpdatedAtMs);
-  el("clock-status").textContent = `Waktu ${clockSource.toUpperCase()}: ${current.toLocaleString("id-ID")}`;
+  el("clock-status").textContent = `Time ${clockSource.toUpperCase()}: ${current.toLocaleString("id-ID")}`;
 }
 
 if (typeof setInterval === "function") setInterval(renderClock, 1000);
@@ -99,10 +132,10 @@ export function loadTime() {
     .then((time) => {
       clockEpochMs = Number(time.epoch) * 1000;
       clockUpdatedAtMs = Date.now();
-      clockSource = time.source || "tidak diketahui";
+      clockSource = time.source || "unknown";
       renderClock();
     })
     .catch(() => {
-      el("clock-status").textContent = "Waktu tidak tersedia";
+      el("clock-status").textContent = "Time unavailable";
     });
 }

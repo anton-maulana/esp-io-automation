@@ -54,7 +54,7 @@ private:
     void onWsEvent(AsyncWebSocket*, AsyncWebSocketClient*, AwsEventType, void*, uint8_t*, size_t);
     void sendJson(AsyncWebServerRequest* request, JsonDocument& doc, int code = 200) const;
     bool applyConfig(JsonVariantConst body, String& error);
-    void handleFirmwareUpload(AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final);
+     void handleFirmwareUpload(AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final);
     void restoreRedacted(JsonDocument& candidate) const;
     void sanitizeCandidate(JsonDocument& candidate) const;
     bool servePublicAsset(AsyncWebServerRequest* request) const;

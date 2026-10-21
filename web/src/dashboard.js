@@ -1,4 +1,4 @@
-import { state, el, escapeHtml, authHeaders } from "./core.js";
+import { state, clearSession, el, escapeHtml, authHeaders } from "./core.js";
 import { loadTime } from "./api.js";
 
 export function loadGpioPins() {
@@ -56,20 +56,35 @@ export function renderDashboard() {
   });
   const active = state.relays.filter((relay) => relay.state).length;
   el("summary").textContent =
-    `${state.relays.length} action tersedia · ${active} sedang menyala`;
+    `${state.relays.length} actions available · ${active} on`;
 }
 
 export function loadDashboard() {
+  el("sync-status").textContent = "Loading dashboard...";
+  el("switch-groups").textContent = "Loading switches...";
   const dashboard = fetch("/api/public/dashboard", { headers: authHeaders() })
-    .then((response) => response.json())
+    .then((response) => {
+      if (response.status === 401 || response.status === 403) {
+        throw Error("session_expired");
+      }
+      if (!response.ok) throw Error("dashboard_load_failed");
+      return response.json();
+    })
     .then((data) => {
       el("device-name").textContent = data.deviceName || "ModuSwitch";
       state.relays = data.relays || [];
       renderDashboard();
       el("sync-status").textContent = "Tersinkron";
     })
-    .catch(() => {
-      el("sync-status").textContent = "Tidak dapat memuat";
+    .catch((error) => {
+      if (error.message === "session_expired") {
+        clearSession();
+        alert("Your session has expired. Please log in again.");
+        el("login-button").classList.remove("hidden");
+        el("menu-button").classList.add("hidden");
+      }
+      el("sync-status").textContent = "Unable to load";
+      el("switch-groups").textContent = "Failed to load dashboard";
     });
   loadTime();
   return dashboard;
@@ -102,7 +117,7 @@ export function connectWebSocket() {
     el("connection").classList.add("online");
   };
   state.ws.onclose = () => {
-    el("connection").textContent = "Menyambungkan ulang";
+    el("connection").textContent = "Reconnecting";
     el("connection").classList.remove("online");
     setTimeout(connectWebSocket, 2500);
   };

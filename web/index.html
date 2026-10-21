@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -13,19 +13,19 @@
         <h1 id="device-name">ModuSwitch</h1>
       </div>
       <div class="header-actions">
-        <span id="connection" class="connection">Menghubungkan</span>
+        <span id="connection" class="connection">Connecting</span>
         <button id="login-button" class="button ghost">Login</button>
-        <button id="menu-button" class="button icon hidden">☰</button>
+        <button style="display: none;" id="menu-button" class="button icon hidden">☰</button>
     </div>
     </header>
     <main>
       <section id="dashboard-view" class="view">
         <section class="hero">
           <div>
-            <p class="eyebrow">DASHBOARD RUMAH</p>
+            <p class="eyebrow">HOME DASHBOARD</p>
             <h2>Control your devices</h2>
-            <p id="summary">Memuat switch...</p>
-            <p id="clock-status" class="clock-status">Waktu: memuat...</p>
+            <p id="summary">Loading switches...</p>
+            <p id="clock-status" class="clock-status">Time: loading...</p>
           </div><span class="hero-icon">⌁</span>
         </section>
         <section>
@@ -33,7 +33,7 @@
             <div>
               <p class="eyebrow">ACTION</p>
               <h2>Configured switches</h2>
-            </div><span id="sync-status">Sinkronisasi...</span>
+            </div><span id="sync-status">Synchronizing...</span>
           </div>
           <div id="switch-groups" class="switch-groups"></div>
         </section>
@@ -50,11 +50,11 @@
         <form id="gpio-form" class="config-card hidden">
           <h3>GPIO I/O</h3>
           <div class="form-grid"><label>GPIO Pin<select name="gpio" id="gpio-pin-select" required>
-                <option value="">Memuat pin...</option>
-              </select></label><label>Status Pin<select name="mode">
+                <option value="">Loading pins...</option>
+              </select></label><label>Pin Mode<select name="mode">
                 <option value="output">Output</option>
                 <option value="input">Input</option>
-              </select></label><label>Nama<input name="name" required></label><label>Relay Active Level<select name="activeLevel"><option value="high">Active High (ON = HIGH)</option><option value="low">Active Low (ON = LOW)</option></select></label><label>Default Condition<select name="defaultCondition">
+              </select></label><label>Name<input name="name" required></label><label>Relay Active Level<select name="activeLevel"><option value="high">Active High (ON = HIGH)</option><option value="low">Active Low (ON = LOW)</option></select></label><label>Default Condition<select name="defaultCondition">
                 <option value="low">Low</option>
                 <option value="high">High</option>
               </select></label></div>
@@ -74,7 +74,7 @@
           <h3>Expand Switch</h3>
           <div class="form-grid"><label>Switch Address<input name="address" placeholder="0x20" required></label><label>Switch Name<input name="name" required></label></div>
           <div class="section-title compact">
-            <h3>I/O pada Switch</h3><button type="button" class="button ghost" id="add-extend-io">Add I/O</button>
+            <h3>Switch I/O</h3><button type="button" class="button ghost" id="add-extend-io">Add I/O</button>
           </div>
           <div id="extend-io-list" class="io-editor"></div>
           <div class="config-actions"><button type="button" class="button ghost" data-cancel="extend">Cancel</button><button type="submit" class="button primary">Save Switch</button></div>
@@ -85,9 +85,9 @@
           <div>
             <p class="eyebrow">CONFIG</p>
             <h2>Action</h2>
-          </div><button class="button primary" data-add="action">Tambah Action</button>
+          </div><button class="button primary" data-add="action">Add Action</button>
         </div>
-        <p class="page-intro">Trigger dapat berasal dari perubahan input, jadwal, atau request HTTP. Action mengubah relay berdasarkan pinId.</p>
+        <p class="page-intro">Triggers can come from input changes, schedules, or HTTP requests. Actions control relays using pinId.</p>
         <div id="action-list" class="config-list"></div>
         <form id="action-form" class="config-card hidden">
           <h3>Action</h3>
@@ -114,21 +114,32 @@
           <div>
             <p class="eyebrow">DEVICE</p>
             <h2>Device & Network</h2>
-          </div><span id="device-status">Konfigurasi belum dimuat</span>
+          </div><span id="device-status">Configuration not loaded</span>
         </div>
         <form id="device-form" class="config-card">
-          <div class="form-grid"><label>Nama perangkat<input name="deviceName" value="Smart Switch" required></label><label>Serial Number<input name="deviceId" value="switch-001" required></label><label>Timezone<select name="timezone">
+          <div class="form-grid"><label>Device Name<input name="deviceName" value="Smart Switch" required></label><label>Serial Number<input name="deviceId" value="switch-001" required></label><label>Timezone<select name="timezone">
                 <option>Asia/Jakarta</option>
                 <option>Asia/Makassar</option>
                 <option>Asia/Jayapura</option>
-              </select></label><label>Hostname<input name="hostname" value="switch-001" required></label><label>SSID Name<input name="ssid" value="Sunline-STI-1" required></label><label>SSID Password<input name="password" type="password" placeholder="Kosongkan jika tidak diubah"></label><label>DS3231 Address<input name="ds3231Address" value="0x68"></label><label class="toggle-field"><input name="anonymousControl" type="checkbox"> Izinkan kontrol anonim</label>
-            <p class="field-help">Jika aktif, pengguna tanpa login dapat melihat dan mengontrol relay yang ditandai public. Pengaturan perangkat tetap membutuhkan login admin.</p><label>Reconnect (ms)<input name="reconnectIntervalMs" type="number" min="3000" value="5000"></label>
+              </select></label><label>Hostname<input name="hostname" value="switch-001" required></label><label>SSID Name<input name="ssid" value="Sunline-STI-1" required></label><label>SSID Password<input name="password" type="password" placeholder="Leave blank to keep unchanged"></label><label>DS3231 Address<input name="ds3231Address" value="0x68"></label><label class="toggle-field"><input name="anonymousControl" type="checkbox"> Allow Anonymous Control</label>
+            <p class="field-help">When enabled, users without login can view and control relays marked public. Device settings still require admin login.</p><label>Reconnect (ms)<input name="reconnectIntervalMs" type="number" min="3000" value="5000"></label>
           </div>
-          <div class="config-actions"><button id="scan-wifi" type="button" class="button ghost">Scan Wi-Fi</button><button type="submit" class="button primary">Save konfigurasi</button></div>
+          <div class="config-actions"><button id="scan-wifi" type="button" class="button ghost">Scan Wi-Fi</button><button type="submit" class="button primary">Save Configuration</button></div>
         </form>
+        <form id="password-form" class="config-card">
+          <h3>Update Admin Password</h3>
+          <div class="form-grid"><label>Current Password<input name="currentPassword" type="password" autocomplete="current-password" required></label><label>New Password<input name="newPassword" type="password" autocomplete="new-password" minlength="8" required></label><label>Confirm New Password<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></label></div>
+          <div class="config-actions"><span id="password-status"></span><button type="submit" class="button primary">Update Password</button></div>
+        </form>
+        <div class="config-card">
+          <h3>Backup & Restore Config</h3>
+          <p class="field-help">Backup excludes Wi-Fi passwords, tokens, and the admin password hash.</p>
+          <input id="restore-config-file" type="file" accept="application/json,.json" class="hidden">
+          <div class="config-actions"><button id="backup-config" type="button" class="button ghost">Download Backup</button><button id="restore-config" type="button" class="button ghost">Restore Config</button></div>
+        </div>
         <div class="danger-zone">
-          <h3>Perawatan perangkat</h3>
-          <p>Firmware dan reboot harus dikonfirmasi untuk mencegah perangkat tidak dapat diakses.</p><input id="firmware-file" type="file" accept=".bin" class="hidden"><button id="upload-firmware" class="button ghost" type="button">Upload Firmware</button><button id="reboot-device" class="button danger" type="button">Reboot Device</button>
+          <h3>Device Maintenance</h3>
+          <p>Firmware upload and reboot require confirmation to prevent the device from becoming inaccessible.</p><input id="firmware-file" type="file" accept=".bin" class="hidden"><button id="upload-firmware" class="button ghost" type="button">Upload Firmware</button><button id="reboot-device" class="button danger" type="button">Reboot Device</button>
         </div>
       </section>
     </main>
@@ -142,7 +153,7 @@
     <div id="login-modal" class="modal hidden">
       <form id="login-form" class="dialog"><button type="button" id="close-login" class="plain close">×</button>
         <p class="eyebrow">ADMIN</p>
-        <h2>Masuk ke ModuSwitch</h2><label>Username<input name="username" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <h2>Sign in to ModuSwitch</h2><label>Username<input name="username" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label>
         <p id="login-error" class="error"></p><button class="button primary">Login</button>
       </form>
     </div>

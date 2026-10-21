@@ -44,11 +44,11 @@ vm.runInContext(readFileSync(new URL('../data/app.js', import.meta.url), 'utf8')
 await new Promise((resolve) => setImmediate(resolve));
 assert.deepEqual(requests.sort(), Object.keys(responses).sort());
 assert.equal(document.getElementById('device-name').textContent, 'Test device');
-assert.equal(document.getElementById('summary').textContent, '1 action tersedia · 0 sedang menyala');
+assert.equal(document.getElementById('summary').textContent, '1 actions available · 0 on');
 assert.equal(sockets.length, 1);
 assert.equal(sockets[0].url, 'ws://device.test/ws');
 sockets[0].onmessage({ data: JSON.stringify({ type: 'relay.state', relayId: 'relay-1', actualState: true }) });
-assert.equal(document.getElementById('summary').textContent, '1 action tersedia · 1 sedang menyala');
+assert.equal(document.getElementById('summary').textContent, '1 actions available · 1 on');
 assert.equal(typeof document.getElementById('gpio-form').onsubmit, 'function');
 assert.equal(typeof document.getElementById('login-form').onsubmit, 'function');
 assert.equal(typeof document.getElementById('add-extend-io').onclick, 'function');

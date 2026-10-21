@@ -8,9 +8,19 @@ import {
   hideForm,
   cloneConfig,
 } from "./core.js";
-import { configRequest, fetchConfig, validateConfig, login } from "./api.js";
+import {
+  configRequest,
+  fetchConfig,
+  validateConfig,
+  login,
+  updatePassword,
+  backupConfig,
+  restoreConfig,
+} from "./api.js";
 
 export function loadConfig() {
+  el("gpio-list").textContent = "Loading GPIO Switch...";
+  el("extend-list").textContent = "Loading Extend Switch...";
   return fetchConfig().then((config) => {
     fillDeviceForm(config);
     renderConfigLists();
@@ -32,7 +42,7 @@ function fillDeviceForm(config) {
   form.reconnectIntervalMs.value = wifi.reconnectIntervalMs || 5000;
   form.ds3231Address.value = `0x${Number(rtc.address || 104).toString(16)}`;
   form.anonymousControl.checked = !!(config.access || {}).anonymousControl;
-  el("device-status").textContent = "Konfigurasi dimuat";
+  el("device-status").textContent = "Configuration loaded";
 }
 
 function populateActionOptions() {
@@ -68,7 +78,7 @@ export function addIo(initial = {}) {
   row.innerHTML =
     `<input name="pin" type="number" min="0" max="7" placeholder="Pin 0-7" required value="${pin}">` +
     `<select name="mode"><option value="output"${mode === "output" ? " selected" : ""}>Output</option><option value="input"${mode === "input" ? " selected" : ""}>Input</option></select>` +
-    `<input name="name" placeholder="Nama I/O" required value="${name}">` +
+    `<input name="name" placeholder="I/O Name" required value="${name}">` +
     `<select name="activeLevel"><option value="high"${activeLevel === "high" ? " selected" : ""}>Active High (ON = HIGH)</option><option value="low"${activeLevel === "low" ? " selected" : ""}>Active Low (ON = LOW)</option></select>` +
     `<select name="default"><option value="low"${level === "low" ? " selected" : ""}>Low</option><option value="high"${level === "high" ? " selected" : ""}>High</option></select>` +
     `<button type="button" class="plain remove-io">×</button>`;
@@ -90,7 +100,7 @@ export function renderConfigLists() {
     (pin) => {
       const item = document.createElement("div");
       item.className = "config-item";
-      item.innerHTML = `<div><strong>GPIO${escapeHtml(String(pin.gpio))} · ${escapeHtml(pin.name)}</strong><span class="config-meta">${escapeHtml(pin.mode)} · default ${pin.initialState ? "High" : "Low"}</span></div><div class="item-actions"><button type="button" class="button ghost edit">Edit</button><button type="button" class="button danger delete">Hapus</button></div>`;
+      item.innerHTML = `<div><strong>GPIO${escapeHtml(String(pin.gpio))} · ${escapeHtml(pin.name)}</strong><span class="config-meta">${escapeHtml(pin.mode)} · default ${pin.initialState ? "High" : "Low"}</span></div><div class="item-actions"><button type="button" class="button ghost edit">Edit</button><button type="button" class="button danger delete">Delete</button></div>`;
       item.querySelector(".edit").onclick = () => {
         showForm("gpio");
         const form = el("gpio-form");
@@ -106,7 +116,7 @@ export function renderConfigLists() {
         form.defaultCondition.value = pin.initialState ? "high" : "low";
       };
       item.querySelector(".delete").onclick = () => {
-        if (!confirm("Hapus GPIO ini dan relay terkait?")) return;
+        if (!confirm("Delete this GPIO and its related relay?")) return;
         applyDraft(
           (draft) => {
             draft.pins = (draft.pins || []).filter(
@@ -117,7 +127,7 @@ export function renderConfigLists() {
             );
             return {};
           },
-          { label: "Gagal menghapus GPIO" },
+          { label: "Failed to delete GPIO" },
         );
       };
       return item;
@@ -126,7 +136,7 @@ export function renderConfigLists() {
   renderList("extend-list", (config.hardware || {}).pcfs || [], (pcf) => {
     const item = document.createElement("div");
     item.className = "config-item";
-    item.innerHTML = `<div><strong>${escapeHtml(pcf.id)}</strong><span class="config-meta">Address 0x${Number(pcf.address).toString(16)} · PCF8574</span></div><div class="item-actions"><button type="button" class="button ghost edit">Edit</button><button type="button" class="button danger delete">Hapus</button></div>`;
+    item.innerHTML = `<div><strong>${escapeHtml(pcf.id)}</strong><span class="config-meta">Address 0x${Number(pcf.address).toString(16)} · PCF8574</span></div><div class="item-actions"><button type="button" class="button ghost edit">Edit</button><button type="button" class="button danger delete">Delete</button></div>`;
     item.querySelector(".edit").onclick = () => {
       showForm("extend");
       const form = el("extend-form");
@@ -153,7 +163,7 @@ export function renderConfigLists() {
     item.querySelector(".delete").onclick = () => {
       if (
         !confirm(
-          "Hapus Extend Switch ini? Pin dan relay yang terkait juga akan dihapus.",
+          "Delete this Extend Switch? Its related pins and relays will also be deleted.",
         )
       )
         return;
@@ -171,7 +181,7 @@ export function renderConfigLists() {
           );
           return {};
         },
-        { label: "Gagal menghapus Extend Switch" },
+        { label: "Failed to delete Extend Switch" },
       );
     };
     return item;
@@ -179,13 +189,13 @@ export function renderConfigLists() {
   renderList("action-list", config.automations || [], (action) => {
     const item = document.createElement("div");
     item.className = "config-item";
-    item.innerHTML = `<div><strong>${escapeHtml(action.name || action.id)}</strong><span class="config-meta">${escapeHtml((action.trigger && action.trigger.type) || "action")}</span></div><div class="item-actions"><button type="button" class="button ghost edit">Edit</button><button type="button" class="button danger delete">Hapus</button></div>`;
+    item.innerHTML = `<div><strong>${escapeHtml(action.name || action.id)}</strong><span class="config-meta">${escapeHtml((action.trigger && action.trigger.type) || "action")}</span></div><div class="item-actions"><button type="button" class="button ghost edit">Edit</button><button type="button" class="button danger delete">Delete</button></div>`;
     item.querySelector(".edit").onclick = () => {
       showForm("action");
       fillActionForm(action);
     };
     item.querySelector(".delete").onclick = () => {
-      if (!confirm("Hapus Action ini?")) return;
+      if (!confirm("Delete this Action?")) return;
       applyDraft(
         (draft) => {
           draft.automations = (draft.automations || []).filter(
@@ -193,7 +203,7 @@ export function renderConfigLists() {
           );
           return {};
         },
-        { label: "Gagal menghapus Action" },
+        { label: "Failed to delete Action" },
       );
     };
     return item;
@@ -219,7 +229,7 @@ function fillActionForm(action) {
 }
 
 function applyDraft(mutator, opts) {
-  if (!state.config) return alert("Konfigurasi belum dimuat");
+  if (!state.config) return alert("Configuration not loaded");
   const draft = cloneConfig(state.config);
   const result = mutator(draft);
   if (result && result.error) return alert(result.error);
@@ -243,7 +253,7 @@ function applyDraft(mutator, opts) {
 
 function refreshConfig() {
   return loadConfig().catch(() => {
-    el("sync-status").textContent = "Tersimpan; sinkronisasi gagal";
+    el("sync-status").textContent = "Saved; synchronization failed";
   });
 }
 
@@ -271,7 +281,7 @@ export function syncLoginUI() {
     }
     if (state.token) {
       el("login-error").textContent =
-        "Login berhasil, tetapi konfigurasi gagal dimuat.";
+        "Login succeeded, but the configuration could not be loaded.";
     }
   });
 }
@@ -286,13 +296,14 @@ export function bindConfigEvents() {
         syncLoginUI();
       })
       .catch(() => {
-        el("login-error").textContent = "Username atau password salah.";
+        el("login-error").textContent = "Invalid username or password.";
       });
   };
   el("gpio-form").onsubmit = saveGpio;
   el("extend-form").onsubmit = saveExtend;
   el("action-form").onsubmit = saveAction;
   el("device-form").onsubmit = saveDevice;
+  el("password-form").onsubmit = savePassword;
   el("action-trigger").onchange = syncActionFields;
   el("action-action").onchange = syncActionFields;
 }
@@ -325,7 +336,7 @@ function saveGpio(event) {
   const allowed = [...el("gpio-pin-select").options].some(
     (option) => Number(option.value) === gpio,
   );
-  if (!allowed) return alert("Pilih GPIO dari daftar pin aman.");
+  if (!allowed) return alert("Choose a GPIO from the safe pin list.");
   return applyDraft(
     (draft) => {
       draft.pins = draft.pins || [];
@@ -336,10 +347,10 @@ function saveGpio(event) {
           pin.id !== editing &&
           Number(pin.gpio) === gpio,
       );
-      if (duplicate) return { error: "GPIO sudah terdaftar" };
+      if (duplicate) return { error: "GPIO is already registered" };
       if (editing) {
         const pin = draft.pins.find((entry) => entry.id === editing);
-        if (!pin) return { error: "Pin tidak ditemukan" };
+        if (!pin) return { error: "Pin not found" };
         pin.gpio = gpio;
         pin.mode = mode;
         pin.name = name;
@@ -397,14 +408,14 @@ function saveGpio(event) {
       return {};
     },
     {
-      label: "Gagal menyimpan GPIO",
+      label: "Failed to save GPIO",
       onSaved: (saved) => {
         delete event.target.dataset.editId;
         hideForm("gpio");
         alert(
           saved && saved.rebootRequired
-            ? "GPIO tersimpan. Reboot perangkat untuk menerapkan hardware."
-            : "GPIO tersimpan.",
+            ? "GPIO saved. Reboot the device to apply hardware changes."
+            : "GPIO saved.",
         );
       },
     },
@@ -482,14 +493,14 @@ function saveExtend(event) {
       return {};
     },
     {
-      label: "Gagal menyimpan Extend Switch",
+      label: "Failed to save Extend Switch",
       onSaved: (saved) => {
         delete form.dataset.editId;
         hideForm("extend");
         alert(
           saved && saved.rebootRequired
-            ? "Extend Switch tersimpan. Reboot perangkat untuk menerapkan hardware."
-            : "Extend Switch tersimpan.",
+            ? "Extend Switch saved. Reboot the device to apply hardware changes."
+            : "Extend Switch saved.",
         );
       },
     },
@@ -505,11 +516,11 @@ function saveAction(event) {
   const triggerType = data.get("trigger");
   const actionType = data.get("action");
   const relayId = data.get("relayId");
-  if (!relayId) return alert("Pilih relay target.");
+  if (!relayId) return alert("Choose a relay target.");
   const trigger = { type: triggerType };
   if (triggerType === "pin_change") {
     const pinId = data.get("triggerPinId");
-    if (!pinId) return alert("Pilih input pin trigger.");
+    if (!pinId) return alert("Choose a trigger input pin.");
     trigger.pinId = pinId;
     trigger.edge = data.get("condition") === "high" ? "rising" : "falling";
   } else if (triggerType === "schedule") {
@@ -537,7 +548,7 @@ function saveAction(event) {
       return {};
     },
     {
-      label: "Gagal menyimpan Action",
+      label: "Failed to save Action",
       onSaved: () => {
         delete form.dataset.editId;
         delete form.dataset.editName;
@@ -547,10 +558,35 @@ function saveAction(event) {
   );
 }
 
+function savePassword(event) {
+  event.preventDefault();
+  const form = new FormData(event.target);
+  const currentPassword = form.get("currentPassword");
+  const newPassword = form.get("newPassword");
+  const confirmPassword = form.get("confirmPassword");
+  const status = el("password-status");
+  if (newPassword !== confirmPassword) {
+    status.textContent = "Password confirmation does not match.";
+    return;
+  }
+  status.textContent = "Updating password...";
+  updatePassword(currentPassword, newPassword)
+    .then(() => {
+      event.target.reset();
+      status.textContent = "Password updated successfully.";
+    })
+    .catch((error) => {
+      status.textContent =
+        error.message === "invalid_current_password"
+          ? "The current password is incorrect."
+          : `Failed: ${error.message}`;
+    });
+}
+
 function saveDevice(event) {
   event.preventDefault();
   const form = new FormData(event.target);
-  if (!state.config) return alert("Konfigurasi belum dimuat");
+  if (!state.config) return alert("Configuration not loaded");
   const draft = cloneConfig(state.config);
   draft.device.name = form.get("deviceName");
   draft.device.id = form.get("deviceId");
@@ -575,12 +611,12 @@ function saveDevice(event) {
       state.config = cloneConfig(draft);
       el("device-status").textContent =
         saved && saved.rebootRequired
-          ? "Tersimpan; reboot diperlukan"
-          : "Tersimpan";
+          ? "Saved; reboot required"
+          : "Saved";
       refreshConfig();
     })
     .catch((error) => {
-      el("device-status").textContent = `Gagal: ${error.message}`;
+      el("device-status").textContent = `Failed: ${error.message}`;
       refreshConfig();
     });
 }
