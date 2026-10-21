@@ -350,6 +350,7 @@ function saveGpio(event) {
           const relay = draft.relays.find((entry) => entry.pinId === pin.id);
           if (relay) {
             relay.activeLevel = activeLevel;
+            relay.startupPolicy = level ? "on" : "off";
           } else {
             draft.relays.push({
               id: `relay-${pin.id}`,
@@ -357,11 +358,11 @@ function saveGpio(event) {
               room: "GPIO Switch",
               icon: "bulb",
               pinId: pin.id,
-               activeLevel,
-               enabled: true,
-               publicControl: true,
-               startupPolicy: "off",
-             });
+             activeLevel,
+             enabled: true,
+             publicControl: true,
+             startupPolicy: level ? "on" : "off",
+           });
           }
         } else {
           draft.relays = draft.relays.filter((relay) => relay.pinId !== pin.id);
@@ -389,7 +390,7 @@ function saveGpio(event) {
             activeLevel,
             enabled: true,
             publicControl: true,
-            startupPolicy: "off",
+            startupPolicy: level ? "on" : "off",
           });
         }
       }
@@ -473,8 +474,8 @@ function saveExtend(event) {
              pinId,
              activeLevel: row.activeLevel,
              enabled: true,
-            publicControl: true,
-            startupPolicy: "off",
+             publicControl: true,
+             startupPolicy: row.level ? "on" : "off",
           });
         }
       });

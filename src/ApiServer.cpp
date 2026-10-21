@@ -367,7 +367,7 @@ void ApiServer::reloadRuntime()
         for (uint8_t j = 0; j < snapshot; j++)
         {
             if (oldHashes[j] != hash) continue;
-            _relays->setState(i, oldStates[j], *_pins, *_pcf, *_gpio);
+            _relays->setState(i, relay.startupPolicy == "on", *_pins, *_pcf, *_gpio);
             restored = true;
             break;
         }
