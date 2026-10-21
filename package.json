@@ -1,0 +1,14 @@
+{
+  "name": "moduswitch-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build_web.mjs",
+    "test:web": "node test/web_smoke_test.mjs && node test/web_behavior_test.mjs",
+    "format": "prettier --write web/app.js web/src/**/*.js"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "prettier": "3.7.4"
+  }
+}
