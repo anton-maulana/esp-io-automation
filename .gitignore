@@ -1,4 +1,6 @@
 .pio
+node_modules/
+__pycache__/
 
 # Local and generated configuration
 web/config.local.json

@@ -82,7 +82,7 @@ void setup() {
     network.begin(root["network"]["wifi"]["ssid"] | "", root["network"]["wifi"]["password"] | "", root["network"]["wifi"]["hostname"] | "modu-switch", root["network"]["wifi"]["reconnectIntervalMs"] | 5000UL);
 
     Serial.println("[BOOT] Step 10/10: starting REST API and WebSocket");
-    api.begin(config, validator, relays, pins, pcf, gpioMgr, timeManager);
+    api.begin(config, validator, relays, pins, pcf, gpioMgr, timeManager, automation);
     Serial.println("[API] HTTP server: port 80");
     Serial.println("[API] WebSocket: /ws");
 

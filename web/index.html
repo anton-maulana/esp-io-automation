@@ -90,20 +90,20 @@
         <p class="page-intro">Trigger dapat berasal dari perubahan input, jadwal, atau request HTTP. Action mengubah relay berdasarkan pinId.</p>
         <div id="action-list" class="config-list"></div>
         <form id="action-form" class="config-card hidden">
-          <h3>New Action</h3>
-          <div class="form-grid"><label>Target Type<select name="targetType">
-                <option value="gpio">GPIO</option>
-                <option value="pcf">Expand Switch</option>
-              </select></label><label>Trigger Condition<select name="condition">
-                <option value="low">Low</option>
-                <option value="high">High</option>
-              </select></label><label>Trigger<select id="action-trigger" name="trigger">
-                <option value="input_change">Input Change</option>
+          <h3>Action</h3>
+          <div class="form-grid"><label>Trigger<select id="action-trigger" name="trigger">
+                <option value="pin_change">Input Change</option>
                 <option value="schedule">Schedule</option>
                 <option value="request">Send Request</option>
-              </select></label><label>Action<select name="action">
+              </select></label><label id="trigger-pin-field">Input Pin<select id="action-trigger-pin" name="triggerPinId"></select></label><label id="action-condition-field">Trigger Condition<select id="action-condition" name="condition">
+                <option value="low">Low</option>
+                <option value="high">High</option>
+              </select></label><label>Relay Target<select id="action-relay-select" name="relayId"></select></label><label>Action<select id="action-action" name="action">
                 <option value="toggle_relay">Toggle Relay</option>
                 <option value="set_relay">Set Relay</option>
+              </select></label><label id="action-state-field" class="hidden">Set State<select id="action-state" name="actionState">
+                <option value="off">Off</option>
+                <option value="on">On</option>
               </select></label></div>
           <div id="schedule-fields" class="form-grid hidden"><label>Hour<input name="hour" type="number" min="0" max="23"></label><label>Minute<input name="minute" type="number" min="0" max="59"></label></div><label id="request-field" class="hidden">HTTP Request URL<input name="requestUrl" type="url" placeholder="https://example.net/hook"></label>
           <div class="config-actions"><button type="button" class="button ghost" data-cancel="action">Cancel</button><button type="submit" class="button primary">Save Action</button></div>
@@ -128,7 +128,7 @@
         </form>
         <div class="danger-zone">
           <h3>Perawatan perangkat</h3>
-          <p>Firmware dan reboot harus dikonfirmasi untuk mencegah perangkat tidak dapat diakses.</p><button id="upload-firmware" class="button ghost" type="button">Upload Firmware</button><button id="reboot-device" class="button danger" type="button">Reboot Device</button>
+          <p>Firmware dan reboot harus dikonfirmasi untuk mencegah perangkat tidak dapat diakses.</p><input id="firmware-file" type="file" accept=".bin" class="hidden"><button id="upload-firmware" class="button ghost" type="button">Upload Firmware</button><button id="reboot-device" class="button danger" type="button">Reboot Device</button>
         </div>
       </section>
     </main>
@@ -146,6 +146,6 @@
         <p id="login-error" class="error"></p><button class="button primary">Login</button>
       </form>
     </div>
-    <script src="/app.js"></script>
+    <script type="module" src="/app.js"></script>
   </body>
 </html>

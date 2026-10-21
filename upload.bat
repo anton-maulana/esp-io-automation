@@ -2,9 +2,9 @@
 setlocal
 cd /d "%~dp0"
 if not exist web (
-  python tools\build_web.py --bootstrap
+  call npm run build -- --bootstrap
 ) else (
-  python tools\build_web.py
+  call npm run build
 )
 if errorlevel 1 exit /b 1
 if "%1"=="firmware" (

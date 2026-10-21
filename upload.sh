@@ -2,9 +2,9 @@
 set -eu
 cd "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 if [ ! -d web ]; then
-  python3 tools/build_web.py --bootstrap
+  npm run build -- --bootstrap
 else
-  python3 tools/build_web.py
+  npm run build
 fi
 case "${1:-}" in
   firmware)

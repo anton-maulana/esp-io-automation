@@ -20,10 +20,11 @@
 #include "PinManager.h"
 #include "GpioManager.h"
 #include "TimeManager.h"
+#include "AutomationEngine.h"
 
 class ApiServer {
 public:
-    void begin(ConfigManager& config, ConfigValidator& validator, RelayManager& relays, PinManager& pins, PcfManager& pcf, GpioManager& gpio, TimeManager& time);
+    void begin(ConfigManager& config, ConfigValidator& validator, RelayManager& relays, PinManager& pins, PcfManager& pcf, GpioManager& gpio, TimeManager& time, AutomationEngine& automation);
     void publishRelayState(uint8_t relayIndex, const String& requestId = "");
     void tick();
 
@@ -37,9 +38,12 @@ private:
     PcfManager* _pcf = nullptr;
     GpioManager* _gpio = nullptr;
     TimeManager* _time = nullptr;
+    AutomationEngine* _automation = nullptr;
     String _sessionToken;
     uint32_t _sessionExpiresAt = 0;
     uint32_t _restartAtMs = 0;
+    bool _reloadPending = false;
+    bool _lastRebootRequired = false;
 
     bool isPublicRelay(const String& relayId) const;
     bool anonymousControlEnabled() const;
@@ -51,4 +55,10 @@ private:
     void sendJson(AsyncWebServerRequest* request, JsonDocument& doc, int code = 200) const;
     bool applyConfig(JsonVariantConst body, String& error);
     void handleFirmwareUpload(AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final);
+    void restoreRedacted(JsonDocument& candidate) const;
+    void sanitizeCandidate(JsonDocument& candidate) const;
+    bool servePublicAsset(AsyncWebServerRequest* request) const;
+    const char* boardName() const;
+    String sha1Hex(const String& input) const;
+    void reloadRuntime();
 };

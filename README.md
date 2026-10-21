@@ -19,6 +19,7 @@ ModuSwitch is an Arduino/PlatformIO smart-switch firmware for Wemos D1 mini ESP8
 ## Requirements
 
 - PlatformIO Core or PlatformIO IDE.
+- Node.js LTS and npm for building Web UI assets.
 - USB connection to a Wemos D1 mini for serial upload.
 - A 2.4 GHz Wi-Fi network for ESP8266.
 - PCF8574 powered at 3.3 V when using an I2C expander.
@@ -36,7 +37,8 @@ ModuSwitch is an Arduino/PlatformIO smart-switch firmware for Wemos D1 mini ESP8
 3. Build the Web UI and generate the LittleFS files:
 
    ```powershell
-   python tools/build_web.py
+    npm ci
+    npm run build
    ```
 
 4. Upload the filesystem:

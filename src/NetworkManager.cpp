@@ -110,7 +110,10 @@ void NetworkManager::tick() {
 #endif
         _lastLogMs = now;
     }
-    bool failed = WiFi.status() == WL_NO_SSID_AVAIL || WiFi.status() == WL_CONNECT_FAILED || WiFi.status() == WL_WRONG_PASSWORD;
+    bool failed = WiFi.status() == WL_NO_SSID_AVAIL || WiFi.status() == WL_CONNECT_FAILED;
+#if defined(ESP8266)
+    failed = failed || WiFi.status() == WL_WRONG_PASSWORD;
+#endif
 #if defined(ESP8266)
     failed = failed || _disconnectReason != 0;
 #endif
