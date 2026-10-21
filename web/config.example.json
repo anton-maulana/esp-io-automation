@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "device": { "id": "switch-001", "name": "ModuSwitch", "timezone": "Asia/Jakarta" },
+  "time": { "source": "auto", "ntpEnabled": true, "ds3231": { "enabled": false, "address": 104 } },
+  "network": {
+    "wifi": { "ssid": "YOUR_WIFI_SSID", "password": "YOUR_WIFI_PASSWORD", "hostname": "switch-001", "reconnectIntervalMs": 5000 },
+    "server": { "enabled": false, "baseUrl": "", "deviceToken": "", "heartbeatIntervalMs": 60000, "requestTimeoutMs": 3000 }
+  },
+  "access": { "enabled": true, "adminUsername": "admin", "adminPasswordHash": "d033e22ae348aeb5660fc2140aec35850c4da997", "sessionTimeoutMs": 3600000, "anonymousControl": false },
+  "publicControl": { "enabled": true, "relayIds": [] },
+  "hardware": {
+    "i2c": { "sdaGpio": 4, "sclGpio": 5, "clockHz": 100000, "scanOnBoot": true },
+    "pcfs": []
+  },
+  "pins": [],
+  "relays": [],
+  "automations": [],
+  "limits": { "maxPcfs": 8, "maxPins": 64, "maxAutomations": 20, "maxActionsPerAutomation": 8, "maxHttpQueue": 8, "maxHttpRetries": 1 },
+  "storage": { "configPath": "/config.json", "statePath": "/state.json", "backupPath": "/config.bak" },
+  "logging": { "enabled": true, "level": "info" }
+}

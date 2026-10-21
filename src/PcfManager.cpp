@@ -1,0 +1,9 @@
+#include "PcfManager.h"
+
+bool PcfManager::begin(uint8_t sdaGpio, uint8_t sclGpio, uint32_t clockHz) { Wire.begin(sdaGpio, sclGpio); Wire.setClock(clockHz); return true; }
+void PcfManager::configure(JsonArrayConst pcfs) { _count = 0; for (JsonVariantConst v : pcfs) { if (_count == 8) break; PcfChip& chip = _chips[_count++]; chip.id = v["id"] | ""; chip.address = v["address"] | 0; chip.enabled = v["enabled"] | true; chip.detected = false; chip.lastRead = 0xff; chip.currentWrite = 0xff; } }
+bool PcfManager::scan() { bool found=false; for(uint8_t i=0;i<_count;i++) { Wire.beginTransmission(_chips[i].address); _chips[i].detected = Wire.endTransmission() == 0; found |= _chips[i].detected; } return found; }
+uint8_t PcfManager::readPort(uint8_t index) { if(index >= _count || !_chips[index].detected) return 0xff; if(Wire.requestFrom((int)_chips[index].address, 1) != 1) return 0xff; return _chips[index].lastRead = Wire.read(); }
+bool PcfManager::writePort(uint8_t index, uint8_t value) { if(index >= _count || !_chips[index].detected) return false; Wire.beginTransmission(_chips[index].address); Wire.write(value); bool ok=Wire.endTransmission()==0; if(ok) _chips[index].currentWrite=value; return ok; }
+bool PcfManager::writeBit(uint8_t index, uint8_t bit, bool value) { if(bit > 7) return false; uint8_t port = _chips[index].currentWrite; bitWrite(port, bit, value); return writePort(index, port); }
+uint8_t PcfManager::count() const{return _count;} const PcfChip& PcfManager::chip(uint8_t index) const{return _chips[index];} int PcfManager::findById(const String& id) const {for(uint8_t i=0;i<_count;i++)if(_chips[i].id==id)return i;return -1;}

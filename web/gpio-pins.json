@@ -1,0 +1,161 @@
+{
+  "esp8266_d1_mini": {
+    "label": "Wemos D1 mini (ESP8266)",
+    "pins": [
+      {
+        "gpio": 16,
+        "label": "D0 / GPIO16",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 12,
+        "label": "D6 / GPIO12",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 13,
+        "label": "D7 / GPIO13",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 14,
+        "label": "D5 / GPIO14",
+        "modes": [
+          "input",
+          "output"
+        ]
+      }
+    ],
+    "excluded": [
+      "D1/GPIO5 dan D2/GPIO4 dipakai I2C",
+      "D3/GPIO0, D4/GPIO2, D8/GPIO15 memengaruhi boot",
+      "RX/GPIO3 dan TX/GPIO1 dipakai serial",
+      "GPIO6-GPIO11 dipakai flash"
+    ]
+  },
+  "esp32_devkit": {
+    "label": "ESP32 DevKit",
+    "pins": [
+      {
+        "gpio": 4,
+        "label": "GPIO4",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 13,
+        "label": "GPIO13",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 14,
+        "label": "GPIO14",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 16,
+        "label": "GPIO16",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 17,
+        "label": "GPIO17",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 18,
+        "label": "GPIO18",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 19,
+        "label": "GPIO19",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 23,
+        "label": "GPIO23",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 25,
+        "label": "GPIO25",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 26,
+        "label": "GPIO26",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 27,
+        "label": "GPIO27",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 32,
+        "label": "GPIO32",
+        "modes": [
+          "input",
+          "output"
+        ]
+      },
+      {
+        "gpio": 33,
+        "label": "GPIO33",
+        "modes": [
+          "input",
+          "output"
+        ]
+      }
+    ],
+    "excluded": [
+      "GPIO21 dan GPIO22 dicadangkan I2C",
+      "GPIO0, GPIO2, GPIO5, GPIO12, GPIO15 memengaruhi boot",
+      "GPIO1 dan GPIO3 dipakai serial",
+      "GPIO6-GPIO11 dipakai flash",
+      "GPIO34-GPIO39 hanya input"
+    ]
+  }
+}
