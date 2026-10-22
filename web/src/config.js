@@ -6,12 +6,11 @@ import {
   clearSession,
   showForm,
   hideForm,
-  cloneConfig,
 } from "./core.js";
 import {
-  configRequest,
   fetchConfig,
-  validateConfig,
+  resourceRequest,
+  deleteResource,
   login,
   updatePassword,
   backupConfig,
@@ -32,7 +31,8 @@ export function loadConfig() {
 function fillDeviceForm(config) {
   const device = config.device || {};
   const wifi = (config.network || {}).wifi || {};
-  const rtc = (config.time || {}).ds3231 || {};
+  const time = config.time || {};
+  const rtc = time.ds3231 || {};
   const form = el("device-form");
   form.deviceName.value = device.name || "";
   form.deviceId.value = device.id || "";
@@ -40,6 +40,9 @@ function fillDeviceForm(config) {
   form.hostname.value = wifi.hostname || "";
   form.ssid.value = wifi.ssid || "";
   form.reconnectIntervalMs.value = wifi.reconnectIntervalMs || 5000;
+  form.timeSource.value = time.source || "auto";
+  form.ntpEnabled.checked = time.ntpEnabled !== false;
+  form.ds3231Enabled.checked = rtc.enabled !== false;
   form.ds3231Address.value = `0x${Number(rtc.address || 104).toString(16)}`;
   form.anonymousControl.checked = !!(config.access || {}).anonymousControl;
   el("device-status").textContent = "Configuration loaded";
@@ -117,18 +120,12 @@ export function renderConfigLists() {
       };
       item.querySelector(".delete").onclick = () => {
         if (!confirm("Delete this GPIO and its related relay?")) return;
-        applyDraft(
-          (draft) => {
-            draft.pins = (draft.pins || []).filter(
-              (entry) => entry.id !== pin.id,
-            );
-            draft.relays = (draft.relays || []).filter(
-              (entry) => entry.pinId !== pin.id,
-            );
-            return {};
-          },
-          { label: "Failed to delete GPIO" },
-        );
+        deleteResource("/api/gpio", pin.id)
+          .then(() => refreshConfig())
+          .catch((error) => {
+            alert(`Failed to delete GPIO: ${error.message}`);
+            refreshConfig();
+          });
       };
       return item;
     },
@@ -167,22 +164,12 @@ export function renderConfigLists() {
         )
       )
         return;
-      applyDraft(
-        (draft) => {
-          const ids = (draft.pins || [])
-            .filter((pin) => pin.pcfId === pcf.id)
-            .map((pin) => pin.id);
-          draft.hardware.pcfs = (draft.hardware.pcfs || []).filter(
-            (entry) => entry.id !== pcf.id,
-          );
-          draft.pins = (draft.pins || []).filter((pin) => pin.pcfId !== pcf.id);
-          draft.relays = (draft.relays || []).filter(
-            (relay) => !ids.includes(relay.pinId),
-          );
-          return {};
-        },
-        { label: "Failed to delete Extend Switch" },
-      );
+      deleteResource("/api/extend-switch", pcf.id)
+        .then(() => refreshConfig())
+        .catch((error) => {
+          alert(`Failed to delete Extend Switch: ${error.message}`);
+          refreshConfig();
+        });
     };
     return item;
   });
@@ -196,15 +183,12 @@ export function renderConfigLists() {
     };
     item.querySelector(".delete").onclick = () => {
       if (!confirm("Delete this Action?")) return;
-      applyDraft(
-        (draft) => {
-          draft.automations = (draft.automations || []).filter(
-            (entry) => entry.id !== action.id,
-          );
-          return {};
-        },
-        { label: "Failed to delete Action" },
-      );
+      deleteResource("/api/actions", action.id)
+        .then(() => refreshConfig())
+        .catch((error) => {
+          alert(`Failed to delete Action: ${error.message}`);
+          refreshConfig();
+        });
     };
     return item;
   });
@@ -226,29 +210,6 @@ function fillActionForm(action) {
   form.querySelector('[name="minute"]').value = trigger.minute ?? "";
   form.querySelector('[name="requestUrl"]').value = trigger.url || "";
   syncActionFields();
-}
-
-function applyDraft(mutator, opts) {
-  if (!state.config) return alert("Configuration not loaded");
-  const draft = cloneConfig(state.config);
-  const result = mutator(draft);
-  if (result && result.error) return alert(result.error);
-  return validateConfig(draft)
-    .then((validation) => {
-      if (!validation.valid) throw Error(validation.error || "invalid");
-      return configRequest("PUT", draft);
-    })
-    .then((saved) => {
-      state.config = cloneConfig(draft);
-      renderConfigLists();
-      populateActionOptions();
-      opts.onSaved(saved);
-      refreshConfig();
-    })
-    .catch((error) => {
-      alert(`${opts.label}: ${error.message}`);
-      refreshConfig();
-    });
 }
 
 function refreshConfig() {
@@ -337,89 +298,53 @@ function saveGpio(event) {
     (option) => Number(option.value) === gpio,
   );
   if (!allowed) return alert("Choose a GPIO from the safe pin list.");
-  return applyDraft(
-    (draft) => {
-      draft.pins = draft.pins || [];
-      draft.relays = draft.relays || [];
-      const duplicate = draft.pins.some(
-        (pin) =>
-          pin.source === "gpio" &&
-          pin.id !== editing &&
-          Number(pin.gpio) === gpio,
-      );
-      if (duplicate) return { error: "GPIO is already registered" };
-      if (editing) {
-        const pin = draft.pins.find((entry) => entry.id === editing);
-        if (!pin) return { error: "Pin not found" };
-        pin.gpio = gpio;
-        pin.mode = mode;
-        pin.name = name;
-        pin.initialState = level;
-        pin.safeState = level;
-        pin.debounceMs = mode === "input" ? 50 : 0;
-        if (mode === "output") {
-          const relay = draft.relays.find((entry) => entry.pinId === pin.id);
-          if (relay) {
-            relay.activeLevel = activeLevel;
-            relay.startupPolicy = level ? "on" : "off";
-          } else {
-            draft.relays.push({
-              id: `relay-${pin.id}`,
-              name,
-              room: "GPIO Switch",
-              icon: "bulb",
-              pinId: pin.id,
-             activeLevel,
-             enabled: true,
-             publicControl: true,
-             startupPolicy: level ? "on" : "off",
-           });
-          }
-        } else {
-          draft.relays = draft.relays.filter((relay) => relay.pinId !== pin.id);
-        }
-      } else {
-        const id = `pin-gpio-${gpio}`;
-        draft.pins.push({
-          id,
-          name,
-          source: "gpio",
-          gpio,
-          mode,
-          initialState: level,
-          safeState: level,
-          enabled: true,
-          debounceMs: mode === "input" ? 50 : 0,
-        });
-        if (mode === "output") {
-          draft.relays.push({
-            id: `relay-${id}`,
-            name,
-            room: "GPIO Switch",
-            icon: "bulb",
-            pinId: id,
-            activeLevel,
-            enabled: true,
-            publicControl: true,
-            startupPolicy: level ? "on" : "off",
-          });
-        }
-      }
-      return {};
-    },
-    {
-      label: "Failed to save GPIO",
-      onSaved: (saved) => {
-        delete event.target.dataset.editId;
-        hideForm("gpio");
-        alert(
-          saved && saved.rebootRequired
-            ? "GPIO saved. Reboot the device to apply hardware changes."
-            : "GPIO saved.",
-        );
-      },
-    },
+  const duplicate = (state.config.pins || []).some(
+    (pin) =>
+      pin.source === "gpio" && pin.id !== editing && Number(pin.gpio) === gpio,
   );
+  if (duplicate) return alert("GPIO is already registered");
+  const id = editing || `pin-gpio-${gpio}`;
+  const pin = {
+    id,
+    name,
+    source: "gpio",
+    gpio,
+    mode,
+    initialState: level,
+    safeState: level,
+    enabled: true,
+    debounceMs: mode === "input" ? 50 : 0,
+  };
+  if (mode === "output") {
+    pin.relay = {
+      id: `relay-${id}`,
+      name,
+      room: "GPIO Switch",
+      icon: "bulb",
+      pinId: id,
+      activeLevel,
+      enabled: true,
+      publicControl: true,
+      startupPolicy: level ? "on" : "off",
+    };
+  } else {
+    pin.deleteRelay = true;
+  }
+  return resourceRequest("/api/gpio", editing ? "PUT" : "POST", pin)
+    .then((saved) => {
+      delete event.target.dataset.editId;
+      hideForm("gpio");
+      alert(
+        saved && saved.rebootRequired
+          ? "GPIO saved. Reboot the device to apply hardware changes."
+          : "GPIO saved.",
+      );
+      return refreshConfig();
+    })
+    .catch((error) => {
+      alert(`Failed to save GPIO: ${error.message}`);
+      refreshConfig();
+    });
 }
 
 function saveExtend(event) {
@@ -437,76 +362,59 @@ function saveExtend(event) {
     level: row.querySelector('[name="default"]').value === "high" ? 1 : 0,
     activeLevel: row.querySelector('[name="activeLevel"]').value === "low" ? 0 : 1,
   }));
-  return applyDraft(
-    (draft) => {
-      draft.hardware = draft.hardware || {};
-      draft.hardware.pcfs = draft.hardware.pcfs || [];
-      const existing = draft.hardware.pcfs.find((entry) => entry.id === id);
-      if (existing) Object.assign(existing, { address, name });
-      else
-        draft.hardware.pcfs.push({
-          id,
-          address,
-          name,
-          type: "PCF8574",
-          enabled: true,
-        });
-
-      const removedPinIds = (draft.pins || [])
-        .filter((pin) => pin.pcfId === id)
-        .map((pin) => pin.id);
-      draft.pins = (draft.pins || []).filter((pin) => pin.pcfId !== id);
-      draft.relays = (draft.relays || []).filter(
-        (relay) => !removedPinIds.includes(relay.pinId),
-      );
-      const seen = new Set();
-      rows.forEach((row) => {
-        if (seen.has(row.pin)) return;
-        seen.add(row.pin);
-        const pinId = `pin-${id}-${row.pin}`;
-        draft.pins.push({
-          id: pinId,
-          name: row.name,
-          source: "pcf",
-          pcfId: id,
-          pin: row.pin,
-          mode: row.mode,
-          initialState: row.level,
-          safeState: row.level,
-          enabled: true,
-          debounceMs: row.mode === "input" ? 50 : 0,
-        });
-        if (row.mode === "output") {
-          draft.relays.push({
-            id: `relay-${pinId}`,
-            name: row.name,
-            room: name || "Extend Switch",
-            icon: "bulb",
-             pinId,
-             activeLevel: row.activeLevel,
-             enabled: true,
-             publicControl: true,
-             startupPolicy: row.level ? "on" : "off",
-          });
-        }
+  const pins = [];
+  const relays = [];
+  const seen = new Set();
+  rows.forEach((row) => {
+    if (seen.has(row.pin)) return;
+    seen.add(row.pin);
+    const pinId = `pin-${id}-${row.pin}`;
+    pins.push({
+      id: pinId,
+      name: row.name,
+      source: "pcf",
+      pcfId: id,
+      pin: row.pin,
+      mode: row.mode,
+      initialState: row.level,
+      safeState: row.level,
+      enabled: true,
+      debounceMs: row.mode === "input" ? 50 : 0,
+    });
+    if (row.mode === "output") {
+      relays.push({
+        id: `relay-${pinId}`,
+        name: row.name,
+        room: name || "Extend Switch",
+        icon: "bulb",
+        pinId,
+        activeLevel: row.activeLevel,
+        enabled: true,
+        publicControl: true,
+        startupPolicy: row.level ? "on" : "off",
       });
-      return {};
-    },
-    {
-      label: "Failed to save Extend Switch",
-      onSaved: (saved) => {
-        delete form.dataset.editId;
-        hideForm("extend");
-        alert(
-          saved && saved.rebootRequired
-            ? "Extend Switch saved. Reboot the device to apply hardware changes."
-            : "Extend Switch saved.",
-        );
-      },
-    },
-  );
+    }
+  });
+  return resourceRequest("/api/extend-switch", editing ? "PUT" : "POST", {
+    pcf: { id, address, name, type: "PCF8574", enabled: true },
+    pins,
+    relays,
+  })
+    .then((saved) => {
+      delete form.dataset.editId;
+      hideForm("extend");
+      alert(
+        saved && saved.rebootRequired
+          ? "Extend Switch saved. Reboot the device to apply hardware changes."
+          : "Extend Switch saved.",
+      );
+      return refreshConfig();
+    })
+    .catch((error) => {
+      alert(`Failed to save Extend Switch: ${error.message}`);
+      refreshConfig();
+    });
 }
-
 function saveAction(event) {
   event.preventDefault();
   const form = event.target;
@@ -539,25 +447,18 @@ function saveAction(event) {
     trigger,
     actions: [actionObj],
   };
-  return applyDraft(
-    (draft) => {
-      draft.automations = draft.automations || [];
-      const index = draft.automations.findIndex((entry) => entry.id === id);
-      if (index >= 0) draft.automations[index] = automation;
-      else draft.automations.push(automation);
-      return {};
-    },
-    {
-      label: "Failed to save Action",
-      onSaved: () => {
-        delete form.dataset.editId;
-        delete form.dataset.editName;
-        hideForm("action");
-      },
-    },
-  );
+  return resourceRequest("/api/actions", editing ? "PUT" : "POST", automation)
+    .then(() => {
+      delete form.dataset.editId;
+      delete form.dataset.editName;
+      hideForm("action");
+      return refreshConfig();
+    })
+    .catch((error) => {
+      alert(`Failed to save Action: ${error.message}`);
+      refreshConfig();
+    });
 }
-
 function savePassword(event) {
   event.preventDefault();
   const form = new FormData(event.target);
@@ -587,40 +488,50 @@ function saveDevice(event) {
   event.preventDefault();
   const form = new FormData(event.target);
   if (!state.config) return alert("Configuration not loaded");
-  const draft = cloneConfig(state.config);
-  draft.device.name = form.get("deviceName");
-  draft.device.id = form.get("deviceId");
-  draft.device.timezone = form.get("timezone");
-  draft.network.wifi.hostname = form.get("hostname");
-  draft.network.wifi.ssid = form.get("ssid");
-  if (form.get("password")) draft.network.wifi.password = form.get("password");
-  draft.network.wifi.reconnectIntervalMs = Number(
-    form.get("reconnectIntervalMs"),
-  );
-  draft.time = draft.time || {};
-  draft.time.ds3231 = draft.time.ds3231 || {};
-  draft.time.ds3231.address = parseInt(form.get("ds3231Address"));
-  draft.access = draft.access || {};
-  draft.access.anonymousControl = form.get("anonymousControl") === "on";
-  validateConfig(draft)
-    .then((validation) => {
-      if (!validation.valid) throw Error(validation.error || "invalid");
-      return configRequest("PUT", draft);
-    })
-    .then((saved) => {
-      state.config = cloneConfig(draft);
-      el("device-status").textContent =
-        saved && saved.rebootRequired
-          ? "Saved; reboot required"
-          : "Saved";
-      refreshConfig();
-    })
+  const wifi = {
+    ...state.config.network.wifi,
+    hostname: form.get("hostname"),
+    ssid: form.get("ssid"),
+    reconnectIntervalMs: Number(form.get("reconnectIntervalMs")),
+  };
+  if (form.get("password")) wifi.password = form.get("password");
+  const changes = {
+    device: {
+      ...state.config.device,
+      name: form.get("deviceName"),
+      id: form.get("deviceId"),
+      timezone: form.get("timezone"),
+    },
+    network: { wifi },
+    time: {
+      ...(state.config.time || {}),
+      source: form.get("timeSource"),
+      ntpEnabled: form.get("ntpEnabled") === "on",
+      ds3231: {
+        ...((state.config.time || {}).ds3231 || {}),
+        enabled: form.get("ds3231Enabled") === "on",
+        address: parseInt(form.get("ds3231Address")),
+      },
+    },
+    access: {
+      ...(state.config.access || {}),
+      anonymousControl: form.get("anonymousControl") === "on",
+    },
+  };
+  return resourceRequest("/api/device", "PUT", changes)
+    .then((saved) =>
+      refreshConfig().then(() => {
+        el("device-status").textContent =
+          saved && saved.rebootRequired
+            ? "Saved; reboot required"
+            : "Saved";
+      }),
+    )
     .catch((error) => {
       el("device-status").textContent = `Failed: ${error.message}`;
       refreshConfig();
     });
 }
-
 export function logout() {
   state.admin = false;
   state.config = null;

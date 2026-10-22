@@ -129,7 +129,14 @@ Useful endpoints:
 - `GET /api/public/dashboard`
 - `POST /api/auth/login`
 - `GET /api/config`
-- `PUT /api/config`
+- `PUT /api/config` — full replacement, mainly for restore/automation clients.
+- `POST /api/config/patch` — partial update of `device`, `network`, `time`, or `access`.
+- `PUT /api/device` — update device/network/time/access sections only.
+- `POST /api/gpio` / `PUT /api/gpio` / `DELETE /api/gpio?id=ID` — GPIO pin CRUD.
+- `POST /api/extend` / `PUT /api/extend` / `DELETE /api/extend?id=ID` — PCF expander pin CRUD.
+- `POST /api/extend-switch` / `PUT /api/extend-switch` / `DELETE /api/extend-switch?id=ID` — atomic PCF chip, pins, and relays operation.
+- `POST /api/relays` / `PUT /api/relays` / `DELETE /api/relays?id=ID` — relay CRUD.
+- `POST /api/actions` / `PUT /api/actions` / `DELETE /api/actions?id=ID` — automation CRUD.
 - `POST /api/config/validate`
 - `GET /api/config/backup` — authenticated redacted backup download.
 - `POST /api/config/restore` — authenticated JSON restore with validation.
@@ -158,3 +165,28 @@ Use a suitable transistor/relay driver and common ground. Do not drive relay coi
 ## License
 
 Add the project license before publishing if this repository will be distributed publicly.
+
+## Clock and offline schedules
+
+TimeManager initializes the system clock from a valid DS3231 at boot, then
+requests NTP asynchronously when enabled. Automation schedules read the system
+clock using `time()` and `localtime_r()`; timezone applies even without NTP.
+DS3231 stores **UTC**. An RTC previously set to local time must first be corrected
+by a successful NTP synchronization. A stopped oscillator or invalid calendar
+is treated as an untrusted RTC, not as a usable clock.
+
+- `time.source: "auto"`: bootstrap from RTC, then periodically synchronize via NTP.
+- `time.source: "ntp"`: do not bootstrap from RTC; NTP can still update the RTC.
+- `time.source: "ds3231"`: bootstrap from RTC; when NTP is enabled, calibrate the
+  RTC once per boot/configuration and then stop NTP after successful calibration.
+- NTP callbacks, rather than the current year alone, confirm a successful sync.
+  Each sync checks the RTC and writes it if invalid or more than two seconds off.
+  Failed RTC writes are retried every ten seconds. The RTC does not overwrite the
+  running system clock every ten seconds.
+- Without either source, relay controls, input automations, and the Web UI remain
+  operational; schedules wait for a valid clock (2024 or later). SNTP retries in
+  the background and RTC availability is checked every ten seconds.
+- Time status includes `clockValid`, `ds3231Valid`, `mode`, `ntpRunning`, and
+  `lastNtpSync` (UTC epoch, zero before sync). `ntpAvailable` means a successful
+  NTP sync since the last configuration, not continuous server reachability.
+  `source` identifies the last clock reference, not current network connectivity.

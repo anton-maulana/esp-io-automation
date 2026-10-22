@@ -32,19 +32,37 @@ bool ConfigManager::load() {
 }
 
 bool ConfigManager::save() {
+    return save(_doc);
+}
+
+bool ConfigManager::save(const JsonDocument& candidate) {
+    _lastSaveError = "";
+    if (candidate.overflowed()) { _lastSaveError = "json_overflow"; return false; }
+#ifdef ESP8266
+    uint32_t freeHeap = ESP.getFreeHeap();
+    uint32_t maxBlock = ESP.getMaxFreeBlockSize();
+    if (freeHeap < 4096 || maxBlock < 2048) {
+        _lastSaveError = String("low_memory:") + freeHeap + "/" + maxBlock;
+        return false;
+    }
+#endif
     const String temporaryPath = _configPath + ".tmp";
     LittleFS.remove(temporaryPath);
     File file = LittleFS.open(temporaryPath, "w");
-    if (!file) return false;
-    bool ok = serializeJsonPretty(_doc, file) > 0;
+    if (!file) { _lastSaveError = "open_failed"; return false; }
+    const size_t expected = measureJson(candidate);
+    bool ok = serializeJson(candidate, file) == expected && expected > 0;
     file.close();
-    if (!ok) { LittleFS.remove(temporaryPath); return false; }
-    if (!backup()) { LittleFS.remove(temporaryPath); return false; }
+    if (!ok) { _lastSaveError = "write_failed"; LittleFS.remove(temporaryPath); return false; }
+    if (!backup()) { _lastSaveError = "backup_failed"; LittleFS.remove(temporaryPath); return false; }
     if (LittleFS.rename(temporaryPath, _configPath)) return true;
+    _lastSaveError = "rename_failed";
     restore();
     LittleFS.remove(temporaryPath);
     return false;
 }
+
+const String& ConfigManager::lastSaveError() const { return _lastSaveError; }
 
 bool ConfigManager::backup() {
     if (!LittleFS.exists(_configPath)) return true;

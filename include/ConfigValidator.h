@@ -16,4 +16,5 @@ private:
     bool checkPinRefs(const JsonDocument& doc, String& error);
     bool checkRelayRefs(const JsonDocument& doc, String& error);
     bool checkAutomationRefs(const JsonDocument& doc, String& error);
+    bool checkCapacity(const JsonDocument& doc, String& error);
 };

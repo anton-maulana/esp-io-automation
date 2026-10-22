@@ -7,8 +7,10 @@ public:
     bool begin();
     bool load();
     bool save();
+    bool save(const JsonDocument& candidate);
     bool backup();
     bool restore();
+    const String& lastSaveError() const;
 
     JsonDocument& doc();
     const JsonDocument& doc() const;
@@ -23,4 +25,5 @@ private:
     String _configPath = "/config.json";
     String _statePath = "/state.json";
     String _backupPath = "/config.bak";
+    mutable String _lastSaveError;
 };

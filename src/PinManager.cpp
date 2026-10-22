@@ -3,7 +3,7 @@
 void PinManager::configure(JsonArrayConst pins, PcfManager& pcf, GpioManager& gpioMgr) {
     _count = 0;
     for (JsonVariantConst v : pins) {
-        if (_count >= 64) break;
+        if (_count >= CapacityLimits::MaxPins) break;
         PinConfig& p = _pins[_count++];
         p.id = v["id"] | "";
         p.name = v["name"] | "";

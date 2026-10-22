@@ -4,6 +4,7 @@
 #include "PinManager.h"
 #include "PcfManager.h"
 #include "GpioManager.h"
+#include "CapacityLimits.h"
 
 struct RelayConfig {
     String id;
@@ -32,6 +33,6 @@ public:
     void applyStartup(PinManager& pins, PcfManager& pcf, GpioManager& gpio);
 
 private:
-    RelayConfig _relays[64];
+    RelayConfig _relays[CapacityLimits::MaxRelays];
     uint8_t _count = 0;
 };

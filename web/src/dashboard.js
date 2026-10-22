@@ -34,7 +34,13 @@ export function renderDashboard() {
   state.groups = groups;
   const root = el("switch-groups");
   root.innerHTML = "";
-  Object.entries(groups).forEach(([name, relays]) => {
+  Object.entries(groups)
+    .sort(([left], [right]) => {
+      if (left === "GPIO") return -1;
+      if (right === "GPIO") return 1;
+      return left.localeCompare(right);
+    })
+    .forEach(([name, relays]) => {
     const section = document.createElement("section");
     section.className = "switch-group";
     section.innerHTML = `<h3>${escapeHtml(name)}</h3><div class="switch-grid"></div>`;

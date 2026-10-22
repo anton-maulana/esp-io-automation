@@ -99,6 +99,11 @@ const config = {
 const requests = [];
 let validateResult = { valid: true };
 let putBody = null;
+let patchBody = null;
+let gpioBody = null;
+let gpioMethod = null;
+let gpioError = null;
+let deviceBody = null;
 let getConfigOk = true;
 const alerts = [];
 const fetch = async (url, options = {}) => {
@@ -107,6 +112,20 @@ const fetch = async (url, options = {}) => {
   if (url === "/api/config/validate") {
     const ok = validateResult.valid;
     return { ok, status: ok ? 200 : 400, json: async () => validateResult };
+  }
+  if (url === "/api/device" && method === "PUT") {
+    deviceBody = JSON.parse(options.body);
+    return { ok: true, status: 200, json: async () => ({ saved: true, rebootRequired: true }) };
+  }
+  if (url === "/api/gpio") {
+    gpioBody = JSON.parse(options.body);
+    gpioMethod = method;
+    const ok = !gpioError;
+    return {
+      ok,
+      status: ok ? 200 : 400,
+      json: async () => (ok ? { saved: true } : { error: gpioError }),
+    };
   }
   if (url === "/api/config" && method === "PUT") {
     putBody = JSON.parse(options.body);
@@ -185,8 +204,9 @@ gpioForm.dataset.editId = "";
 gpioForm.onsubmit({ preventDefault() {}, target: gpioForm });
 await flush();
 
-assert.ok(putBody, "expected a config PUT");
-assert.equal(putBody.pins[0].id, "pin-gpio-12");
+assert.equal(gpioMethod, "POST", "new GPIO uses resource POST");
+assert.equal(gpioBody.id, "pin-gpio-12");
+assert.equal(gpioBody.relay.id, "relay-pin-gpio-12");
 assert.ok(alerts.some((message) => message.includes("GPIO saved")));
 assert.ok(
   !alerts.some((message) => message.includes("Failed to save GPIO")),
@@ -194,7 +214,7 @@ assert.ok(
 );
 
 alerts.length = 0;
-putBody = null;
+gpioBody = null;
 getConfigOk = false;
 gpioForm.dataset.editId = "";
 gpioForm._data = {
@@ -206,7 +226,7 @@ gpioForm._data = {
 gpioForm.onsubmit({ preventDefault() {}, target: gpioForm });
 await flush();
 
-assert.ok(putBody, "save still succeeds when refresh fails");
+assert.ok(gpioBody, "save still succeeds when refresh fails");
 assert.ok(
   !alerts.some((message) => message.includes("Failed to save GPIO")),
   "refresh failure must not be reported as save failure",
@@ -217,8 +237,9 @@ assert.equal(
 );
 
 getConfigOk = true;
-putBody = null;
-validateResult = { valid: false, error: "Duplicate pin id" };
+alerts.length = 0;
+gpioBody = null;
+gpioError = "Duplicate pin id";
 gpioForm.dataset.editId = "";
 gpioForm._data = {
   gpio: "14",
@@ -229,12 +250,51 @@ gpioForm._data = {
 gpioForm.onsubmit({ preventDefault() {}, target: gpioForm });
 await flush();
 
-assert.equal(putBody, null, "invalid config must not be saved");
+assert.ok(gpioBody, "resource request still reaches the backend");
+assert.ok(
+  !alerts.some((message) => message.includes("GPIO saved")),
+  "rejected GPIO must not report success",
+);
 assert.ok(
   alerts.some((message) => message.includes("Failed to save GPIO")),
   "validation failure must be reported",
 );
 
+alerts.length = 0;
+gpioError = null;
+deviceBody = null;
+const deviceForm = document.getElementById("device-form");
+deviceForm._data = {
+  deviceName: "Patched Device",
+  deviceId: "switch-002",
+  timezone: "Asia/Makassar",
+  hostname: "patched-host",
+  ssid: "patched-ssid",
+  password: "",
+  reconnectIntervalMs: "7000",
+  timeSource: "ds3231",
+  ntpEnabled: "on",
+  ds3231Enabled: "on",
+  ds3231Address: "0x68",
+  anonymousControl: "on",
+};
+deviceForm.onsubmit({ preventDefault() {}, target: deviceForm });
+await flush();
+
+assert.ok(deviceBody, "expected a device update");
+assert.ok(!("pins" in deviceBody), "device update must not resend pins");
+assert.ok(!("relays" in deviceBody), "device update must not resend relays");
+assert.equal(deviceBody.device.name, "Patched Device");
+assert.equal(deviceBody.device.timezone, "Asia/Makassar");
+assert.equal(deviceBody.time.source, "ds3231");
+assert.equal(deviceBody.time.ntpEnabled, true);
+assert.equal(deviceBody.access.anonymousControl, true);
+assert.equal(deviceBody.network.wifi.reconnectIntervalMs, 7000);
+assert.equal(
+  document.getElementById("device-status").textContent,
+  "Saved; reboot required",
+);
+
 console.log(
-  "Web behavior test passed: config load, save/refresh decoupling, and validation rejection.",
+  "Web behavior test passed: resource CRUD flow, save/refresh decoupling, rejection handling, and device update.",
 );

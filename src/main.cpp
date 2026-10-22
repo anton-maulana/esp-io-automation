@@ -10,6 +10,8 @@
 #include "NetworkManager.h"
 #include "TimeManager.h"
 #include "ApiServer.h"
+#include "Diagnostics.h"
+#include <ctype.h>
 
 ConfigManager config;
 ConfigValidator validator;
@@ -22,6 +24,80 @@ HttpQueue http;
 NetworkManager network;
 TimeManager timeManager;
 ApiServer api;
+
+static String serialLine;
+
+void processSerialCommand() {
+    while (Serial.available()) {
+        char c = static_cast<char>(Serial.read());
+        if (c == '\r') continue;
+        if (c != '\n') {
+            if (serialLine.length() < 160) serialLine += c;
+            continue;
+        }
+        serialLine.trim();
+        if (serialLine.startsWith("WIFI=")) {
+            String credentials = serialLine.substring(5);
+            int separator = credentials.indexOf(',');
+            if (separator <= 0) {
+                Serial.println("[TTL] ERROR: gunakan WIFI=SSID,PASSWORD");
+            } else {
+                String ssid = credentials.substring(0, separator);
+                String password = credentials.substring(separator + 1);
+                ssid.trim();
+                password.trim();
+                if (ssid.length() == 0 || password.length() == 0) {
+                    Serial.println("[TTL] ERROR: SSID dan password wajib diisi");
+                } else {
+                    config.doc()["network"]["wifi"]["ssid"] = ssid;
+                    config.doc()["network"]["wifi"]["password"] = password;
+                    if (config.save()) {
+                        Serial.printf("[TTL] Wi-Fi tersimpan untuk SSID: %s. Tekan reset/reboot.\n", ssid.c_str());
+                    } else {
+                        Serial.println("[TTL] ERROR: gagal menyimpan Wi-Fi ke config.json");
+                    }
+                }
+            }
+        } else if (serialLine.startsWith("SSID=")) {
+            String ssid = serialLine.substring(5);
+            ssid.trim();
+            if (ssid.length() == 0) {
+                Serial.println("[TTL] ERROR: SSID kosong");
+            } else {
+                config.doc()["network"]["wifi"]["ssid"] = ssid;
+                if (config.save()) {
+                    Serial.printf("[TTL] SSID tersimpan: %s. Tekan reset/reboot.\n", ssid.c_str());
+                } else {
+                    Serial.println("[TTL] ERROR: gagal menyimpan SSID ke config.json");
+                }
+            }
+        } else if (serialLine.startsWith("PASSWORD=")) {
+            String password = serialLine.substring(9);
+            password.trim();
+            if (password.length() == 0) {
+                Serial.println("[TTL] ERROR: password kosong");
+            } else {
+                config.doc()["network"]["wifi"]["password"] = password;
+                if (config.save()) Serial.println("[TTL] Password Wi-Fi tersimpan. Tekan reset/reboot.");
+                else Serial.println("[TTL] ERROR: gagal menyimpan password ke config.json");
+            }
+        } else if (serialLine == "LOG=ON" || serialLine == "LOG=OFF") {
+            bool enabled = serialLine == "LOG=ON";
+            config.doc()["logging"]["enabled"] = enabled;
+            if (config.save()) {
+                diagnostics.setEnabled(enabled);
+                Serial.printf("[TTL] Logging %s dan tersimpan ke config.json. Tekan reset untuk verifikasi.\n", enabled ? "aktif" : "nonaktif");
+            } else {
+                Serial.println("[TTL] ERROR: gagal menyimpan logging ke config.json");
+            }
+        } else if (serialLine == "HELP") {
+            Serial.println("[TTL] WIFI=SSID,PASSWORD | SSID=nama_wifi | LOG=ON | LOG=OFF | HELP");
+        } else if (serialLine.length() > 0) {
+            Serial.println("[TTL] Perintah tidak dikenal. Ketik HELP.");
+        }
+        serialLine = "";
+    }
+}
 
 void onPinEdge(uint8_t pinIndex, bool rising) {
     Serial.printf("[INPUT] Pin %u changed: %s\n", pinIndex, rising ? "HIGH" : "LOW");
@@ -53,6 +129,8 @@ void setup() {
     Serial.println("[BOOT] Configuration valid");
 
     JsonObjectConst root = config.doc().as<JsonObjectConst>();
+    diagnostics.begin(root["logging"]["enabled"] | false, root["logging"]["level"] | "info");
+    diagnostics.log("DEBUG", "Configuration logging enabled");
     JsonObjectConst i2c = root["hardware"]["i2c"];
     Serial.println("[BOOT] Step 4/10: starting I2C and PCF manager");
     pcf.begin(i2c["sdaGpio"] | 4, i2c["sclGpio"] | 5, i2c["clockHz"] | 100000UL);
@@ -82,7 +160,7 @@ void setup() {
     network.begin(root["network"]["wifi"]["ssid"] | "", root["network"]["wifi"]["password"] | "", root["network"]["wifi"]["hostname"] | "modu-switch", root["network"]["wifi"]["reconnectIntervalMs"] | 5000UL);
 
     Serial.println("[BOOT] Step 10/10: starting REST API and WebSocket");
-    api.begin(config, validator, relays, pins, pcf, gpioMgr, timeManager, automation);
+    api.begin(config, validator, relays, pins, pcf, gpioMgr, timeManager, automation, http);
     Serial.println("[API] HTTP server: port 80");
     Serial.println("[API] WebSocket: /ws");
 
@@ -91,6 +169,7 @@ void setup() {
 }
 
 void loop() {
+    processSerialCommand();
     timeManager.tick();
     network.tick();
     pins.tick(pcf, gpioMgr, onPinEdge);

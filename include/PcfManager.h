@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <ArduinoJson.h>
+#include "CapacityLimits.h"
 
 struct PcfChip {
     String id;
@@ -25,6 +26,6 @@ public:
     int findById(const String& id) const;
 
 private:
-    PcfChip _chips[8];
+    PcfChip _chips[CapacityLimits::MaxPcf];
     uint8_t _count = 0;
 };

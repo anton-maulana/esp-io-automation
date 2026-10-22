@@ -13,6 +13,44 @@ export function configRequest(method, body) {
   );
 }
 
+export function resourceRequest(path, method, body) {
+  return fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: body ? JSON.stringify(body) : undefined,
+  }).then((response) =>
+    response.json().then((data) => {
+      if (!response.ok) throw Error(data.error || "resource_error");
+      return data;
+    }),
+  );
+}
+
+export function deleteResource(path, id) {
+  return fetch(`${path}?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  }).then((response) =>
+    response.json().then((data) => {
+      if (!response.ok) throw Error(data.error || "delete_failed");
+      return data;
+    }),
+  );
+}
+
+export function patchConfig(changes) {
+  return fetch("/api/config/patch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ changes }),
+  }).then((response) =>
+    response.json().then((data) => {
+      if (!response.ok) throw Error(data.error || "config_patch_failed");
+      return data;
+    }),
+  );
+}
+
 export function validateConfig(config) {
   return fetch("/api/config/validate", {
     method: "POST",

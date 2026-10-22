@@ -3,7 +3,7 @@
 void RelayManager::configure(JsonArrayConst relays, PinManager& pins) {
     _count = 0;
     for (JsonVariantConst v : relays) {
-        if (_count >= 64) break;
+        if (_count >= CapacityLimits::MaxRelays) break;
         RelayConfig& r = _relays[_count++];
         r.id = v["id"] | "";
         r.name = v["name"] | "";

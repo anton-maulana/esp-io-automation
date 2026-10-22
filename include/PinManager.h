@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 #include "PcfManager.h"
 #include "GpioManager.h"
+#include "CapacityLimits.h"
 
 struct PinConfig {
     String id;
@@ -34,6 +35,6 @@ public:
     String getMode(uint8_t index) const;
 
 private:
-    PinConfig _pins[64];
+    PinConfig _pins[CapacityLimits::MaxPins];
     uint8_t _count = 0;
 };
